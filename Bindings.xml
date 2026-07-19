@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="AZTARECHELPER_CAPTURE" category="ADDONS">
+        AztarecHelper_Capture()
+    </Binding>
+</Bindings>

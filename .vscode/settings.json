@@ -1,0 +1,40 @@
+{
+    "Lua.runtime.version": "Lua 5.1",
+    "Lua.runtime.builtin": {
+        "basic": "disable",
+        "debug": "disable",
+        "io": "disable",
+        "math": "disable",
+        "os": "disable",
+        "package": "disable",
+        "string": "disable",
+        "table": "disable",
+        "utf8": "disable"
+    },
+    "Lua.workspace.library": [
+        "~\\.vscode\\extensions\\ketho.wow-api-0.22.3\\Annotations\\Core"
+    ],
+    "Lua.diagnostics.globals": [
+        "GameTooltip",
+        "CHANNELS",
+        "STANDARD_TEXT_FONT",
+        "RAID_CLASS_COLORS",
+        "LE_PARTY_CATEGORY_HOME",
+        "CreateAndInitFromMixin",
+        "ImportDataStreamMixin",
+        "Minimap",
+        "AddonCompartmentFrame",
+        "WOW_PROJECT_ID",
+        "WOW_PROJECT_MAINLINE",
+        "AuraUtil",
+        "SlashCmdList",
+        "LE_PARTY_CATEGORY_INSTANCE",
+        "Settings",
+        "MenuResponse",
+        "RemoveExtraSpaces",
+        "StaticPopupDialogs",
+        "DELETE_ITEM_CONFIRM_STRING",
+        "ChatFontNormal",
+        "CreateVector2D"
+    ]
+}

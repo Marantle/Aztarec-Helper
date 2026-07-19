@@ -1,0 +1,17 @@
+## Interface: 120007, 120100
+## Title: Azta'rec Helper
+## Notes: Sermon of Ula'tek memory game helper for the Azta'rec delve nemesis.
+## Version: 1.1.1
+## Author: Rothirr
+## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1613242
+## IconTexture: Interface\AddOns\AztarecHelper\addonlogo
+## AddonCompartmentFunc: AztarecHelper_OnCompartment
+## SavedVariables: AztarecHelperDB
+
+AztarecHelper.lua
+RoomView.lua
+SafeSpots.lua
+Options.lua
+# dev-only tools; stripped from packaged zips (Makefile DEV_FILES)
+DevTools.lua

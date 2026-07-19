@@ -1,0 +1,5 @@
+.env
+*.zip
+.release_meta.json
+logs.txt
+DevTools.lua

@@ -1,0 +1,55 @@
+{
+  "runtime": {
+    "version": "Lua 5.1"
+  },
+  "workspace": {
+    "library": ["./types"],
+    "ignoreDir": ["tutorial"]
+  },
+  "diagnostics": {
+    "globals": [
+      "AZT",
+      "AztarecHelperDB",
+      "SlashCmdList",
+      "SLASH_AZT1",
+      "C_Timer",
+      "C_Spell",
+      "C_ChatInfo",
+      "Settings",
+      "CreateFrame",
+      "UIParent",
+      "GameTooltip",
+      "GameFontNormal",
+      "GameFontNormalSmall",
+      "GetTime",
+      "UnitName",
+      "UnitGUID",
+      "UnitExists",
+      "UnitIsUnit",
+      "IsInGroup",
+      "IsInRaid",
+      "GetRaidRosterInfo",
+      "LE_PARTY_CATEGORY_INSTANCE",
+      "IsEncounterInProgress",
+      "InCombatLockdown",
+      "RAID_CLASS_COLORS",
+      "CLASS_SORT_ORDER",
+      "Minimap",
+      "GetCursorPosition",
+      "print",
+      "tostring",
+      "tonumber",
+      "type",
+      "pairs",
+      "ipairs",
+      "pcall",
+      "xpcall",
+      "error",
+      "math",
+      "string",
+      "table",
+      "unpack",
+      "select"
+    ]
+  }
+}
