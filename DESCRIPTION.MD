@@ -6,7 +6,7 @@ Consider this a beta for now. Azta'rec arrives with Midnight Season 2 (12.1), wh
 
 Azta'rec's memory game. During **Sermon of Ula'tek** he repeatedly slams three quarters of the room at once with Waves of Venom, and ground indicators show you where. Then he repeats the exact same sequence as **Echo of Ula'tek**, without the indicators.
 
-This addon remembers it for you. While the indicators are up it records which quarter you stood in for each wave. When the echoes start, a top-down view of the boss room shows the full route, an arrow points at the safe quarter, and a countdown tells you how long you have to get there.
+This addon remembers it for you. While the indicators are up it records which quarter you stood in for each wave. When the echoes start, a top-down view of the boss room shows the full route, an arrow points at the safe quarter and a countdown tells you how long you have to get there.
 
 ![The room view in action](https://rothirr.wordpress.com/wp-content/uploads/2026/08/aztarechelper2.0.webp)
 
@@ -21,7 +21,7 @@ This addon remembers it for you. While the indicators are up it records which qu
 *   Handles the longer sequences on higher tiers, where the pattern grows with every intermission.
 *   Manual mode for people who want full control: turn off the automatic recording and mark each safe quarter yourself with the capture key. The same key also works during automatic recording, as an override for a single wave if the addon guessed wrong (caught mid-run between quarters at the wrong moment, for example).
 *   Every window drags where you want it and remembers the spot. A small padlock in the corner locks a window in place and lets clicks pass through it. `/azt place` shows everything anywhere, so you can arrange your layout without pulling the boss first.
-*   A proper settings panel. Open it with `/azt options`, from the Opts button on the room view, or from the addon compartment by the minimap.
+*   A proper settings panel. Open it with `/azt options`, from the Opts button on the room view or from the addon compartment by the minimap.
 
 *A note on lineage: if you have seen another addon do this, the idea started here. The recording and the radar were measured and built in mid-July 2026 and went public in this addon on July 25, the file list on this page is the proof. The other addon for this fight adopted the approach in early August, with credit to this one in its source.*
 

@@ -2,10 +2,6 @@
   "runtime": {
     "version": "Lua 5.1"
   },
-  "workspace": {
-    "library": ["./types"],
-    "ignoreDir": ["tutorial"]
-  },
   "diagnostics": {
     "globals": [
       "AZT",

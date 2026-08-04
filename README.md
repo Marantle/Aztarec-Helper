@@ -11,3 +11,4 @@ Everything shows up on its own when it is needed. `/azt` lists the commands and
 AddOns in the key bindings panel.
 
 you can search this repo for `--#region` to find different logic regions in the code
+like `--#region Locks` defines an area start for the logic to locking the panels in place

@@ -9,8 +9,8 @@ Everything else requires my written permission first. In particular you may
 not:
 
 - redistribute the addon or any part of it, through any third party site,
-  launcher, pack, or bundle
-- copy code, data, or assets from it into another addon or project
+  launcher, pack or bundle
+- copy code, data or assets from it into another addon or project
 - publish modified versions of it
 
 The source being readable does not grant any license to it. Measured game
@@ -18,7 +18,7 @@ data shipped with the addon (encounter timings, room coordinates) is the
 result of the author's own testing and is covered by the same terms.
 
 The same applies to automated tools. This addon and its data are not
-licensed as input, reference, or training material for AI code generation,
+licensed as input, reference or training material for AI code generation,
 and nothing produced from them that way is licensed either.
 
 This addon is provided as is, with no warranty of any kind. Use it at your
