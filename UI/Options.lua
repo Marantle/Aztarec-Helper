@@ -1,12 +1,12 @@
 local _, AZT = ...
 
 -- Settings panel. Canvas layout because the vertical list can't host the view
--- mode cycle button, and the old dropdown template is broken in 12.x panels.
+-- mode cycle button
 
 local panel = CreateFrame("Frame")
 panel.name = "Azta'rec Helper"
 
--- rows re-read their state every time the panel opens
+-- re-read the state every time the panel opens
 local refreshers = {}
 panel:SetScript("OnShow", function()
     for _, fn in ipairs(refreshers) do

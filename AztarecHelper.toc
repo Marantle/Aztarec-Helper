@@ -5,13 +5,16 @@
 ## Author: Rothirr
 ## X-License: All Rights Reserved
 ## X-Curse-Project-ID: 1613242
-## IconTexture: Interface\AddOns\AztarecHelper\addonlogo
+## IconTexture: Interface\AddOns\AztarecHelper\Media\addonlogo
 ## AddonCompartmentFunc: AztarecHelper_OnCompartment
 ## SavedVariables: AztarecHelperDB
 
-AztarecHelper.lua
-RoomView.lua
-SafeSpots.lua
-Options.lua
-# dev-only tools; stripped from packaged zips (Makefile DEV_FILES)
-DevTools.lua
+Core\AztarecHelper.lua
+UI\Windows.lua
+UI\RoomView.lua
+UI\WaveText.lua
+UI\Arrow.lua
+Core\SafeSpots.lua
+UI\Options.lua
+# dev-only tools stripped from packaged zips via Makefile DEV_FILES
+Dev\DevTools.lua

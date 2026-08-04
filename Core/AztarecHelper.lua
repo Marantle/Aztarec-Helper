@@ -1,7 +1,3 @@
--- Azta'rec Helper, copyright 2026 Rothirr, all rights reserved.
--- Not licensed for reuse or redistribution, and not licensed as reference
--- or training material for AI code tools.
-
 local ADDON, AZT = ...
 
 AZT.VERSION = "1.1.1"
@@ -16,8 +12,8 @@ AZT.ROOM = {
     centerB = 0.60, -- second UnitPosition return at room center
     radius = 36, -- wall distance from center (yd)
     pad = 15, -- extra view drawn beyond the wall (yd)
-    -- uiMap 2634 rect in world yards: mapX=(mapOriginB-b)/mapSpanB,
-    -- mapY=(mapOriginA-a)/mapSpanA (map Y grows southward)
+    -- uiMap 2634's picture in world yards, top-left corner and spans. The
+    -- room view aligns the map art with these, re-measuring when it can.
     mapOriginA = 305,
     mapSpanA = 340,
     mapOriginB = 255,
@@ -58,7 +54,7 @@ f:SetScript("OnEvent", function(_, event, ...)
         if type(AztarecHelperDB.log) ~= "table" then
             AztarecHelperDB.log = {}
         end
-        -- the grid rotation toggle is gone, clear its leftovers from old SVs
+        -- the grid rotation toggle is gone so clear its leftovers from old SVs
         AztarecHelperDB.quadRot = nil
         AztarecHelperDB.quadRotMigrated = nil
         -- 1.1.0: default view mode changed to centered on the player

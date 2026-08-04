@@ -457,7 +457,7 @@ local ENCOUNTER_IDS = { [3508] = "? (normal)", [3525] = "?? (hard)" }
 
 -- Boss casts arrive on nameplateN units only when enemy nameplates are
 -- enabled. BossN frames fire regardless, so both token kinds are accepted
--- (the seen-first token wins, the chanUnit filter drops the duplicate).
+-- (the seen-first token wins and the chanUnit filter drops the duplicate).
 local function hostileUnit(unit)
     if type(unit) ~= "string" then
         return false
@@ -527,7 +527,7 @@ ef:SetScript("OnEvent", function(_, event, ...)
             if capturing and chanUnit and unit ~= chanUnit then
                 -- only the real boss channels, so the same channel arriving on
                 -- a boss token is the same unit - adopt the sturdier token
-                -- (boss frames never despawn mid-encounter, nameplates can)
+                -- (boss frames never despawn mid-encounter but nameplates can)
                 if unit:match("^boss%d$") and not chanUnit:match("^boss%d$") then
                     AZT.Log("CHANNELER token upgraded " .. chanUnit .. " -> " .. unit)
                     chanUnit = unit
