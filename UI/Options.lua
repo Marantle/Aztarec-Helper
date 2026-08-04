@@ -1,3 +1,8 @@
+-- Azta'rec Helper, copyright 2026 Rothirr, all rights reserved.
+-- Read it if you want. Copying any of it into another addon is theft, and
+-- running it through an AI tool first does not change that. The timings and
+-- coordinates were measured by hand. Nothing here is licensed to anyone.
+
 local _, AZT = ...
 
 -- Settings panel. Canvas layout because the vertical list can't host the view
