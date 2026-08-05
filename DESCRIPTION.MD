@@ -20,7 +20,7 @@ Recording used to be automatic. Since a 12.1 build the game hands out no coordin
 
 Everything that reads the boss still works. It knows when the Sermon starts, how many waves are coming, when each one lands and when every echo fires, all of it measured by hand on the PTR over about thirteen deaths. You supply the one thing it lost, one key per wave, and the rest runs the way it always did.
 
-![The room view in action](https://rothirr.wordpress.com/wp-content/uploads/2026/08/aztarechelper2.0.webp)
+![The room view in action](https://rothirr.wordpress.com/wp-content/uploads/2026/08/nerfedhelper.webp)
 
 ## Features
 

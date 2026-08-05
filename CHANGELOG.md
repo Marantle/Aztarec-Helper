@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.1
+- The arrow holds one color the whole way through an echo phase, and you pick which one in the settings panel. Gold, red, green, white, cyan or violet, with gold leaving the artwork as it was painted
+- The red and green states are gone. Green was meant for the moment a wave lands, and the encounter hides that moment, so it almost never arrived and the arrow sat red regardless
+- The parked arrow out of combat wears your color too, dimmed, so you can see what you are picking while you pick it
+- The arrow stops pointing when an echo runs well past the spacing the ones before it set, instead of holding a call that is not coming
+- The instructions no longer promise the voice half a second of warning. That timing needs the boss's cast bar, which the encounter keeps hidden, so the call lands when the echo starts instead
+
 ## 1.3.0
 - Since a 12.1 build the game hands out no coordinates inside the delve, so everything that read where you stand stopped working there. You record the route yourself now. During the Sermon press a section key or `/azt n`, `/azt e`, `/azt s`, `/azt w` for the quarter you run to, one press per wave, and the echoes play your recording back as before
 - Four new key bindings, one per section. They replace the old capture key, which needed to read your position to know what to record. Set them in the game's Key Bindings screen or straight from the addon's settings, and the quarters on the room view are clickable during the memory game too, for mouse people
@@ -7,7 +14,6 @@
 - Answers land in order. Miss one and your next press catches it up, so two quick taps get you level again, and a wave still blank when the echoes start can be filled until its own echo plays. You cannot answer a wave that has not happened yet
 - `/azt review` counts the waves you never answered, and says so plainly when one of them is what killed you
 - The arrow works again during the echoes. It cannot see where you stand, so it walks the recorded order instead, showing the move out of the quarter the last wave left you in, in the same forward, left, right or stay terms as the spoken cues. It trusts the recording, so if you fell behind it points from where you should have been
-- The arrow holds one color the whole way through, and you pick which in the settings panel. Gold, red, green, white, cyan or violet. The old red and green states are gone, because the encounter hides the moment a wave lands and a color that changes on a guess is worse than one that stays put
 - The spoken cues follow the recorded route the same way, so they work again too. The settings panel has a volume slider beside the channel button, which is the game's own volume for that channel, so it shows the real level and moving it moves the sound options with it
 - Talking Head is gone from the cue channel list. It was never a channel the game accepts, and anyone left on it moves to Master
 - The view mode switch is gone. The room view sits still now, centered on the room with north up, since the moving views needed a readable position
