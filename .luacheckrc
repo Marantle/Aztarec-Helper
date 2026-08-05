@@ -6,10 +6,16 @@ globals = {
     "AztarecHelperDB",
     "SLASH_AZT1",
     "SlashCmdList",
-    "AztarecHelper_Capture",
+    "AztarecHelper_MarkNorth",
+    "AztarecHelper_MarkEast",
+    "AztarecHelper_MarkSouth",
+    "AztarecHelper_MarkWest",
     "AztarecHelper_OnCompartment",
     "BINDING_HEADER_AZTARECHELPER",
-    "BINDING_NAME_AZTARECHELPER_CAPTURE",
+    "BINDING_NAME_AZTARECHELPER_MARK_NORTH",
+    "BINDING_NAME_AZTARECHELPER_MARK_EAST",
+    "BINDING_NAME_AZTARECHELPER_MARK_SOUTH",
+    "BINDING_NAME_AZTARECHELPER_MARK_WEST",
 }
 
 -- WoW API globals we read but never assign to
@@ -21,7 +27,11 @@ read_globals = {
     "C_Map",
     "C_ScenarioInfo",
     "C_Texture",
+    "C_CVar",
+    "GetCVar",
     "Settings",
+    "MenuUtil",
+    "UISpecialFrames",
     -- Frame creation
     "CreateFrame",
     "UIParent",
@@ -60,6 +70,15 @@ read_globals = {
     -- Combat / encounter
     "IsEncounterInProgress",
     "InCombatLockdown",
+    -- Key bindings
+    "GetBindingKey",
+    "GetBindingText",
+    "SetBinding",
+    "SaveBindings",
+    "GetCurrentBindingSet",
+    "IsAltKeyDown",
+    "IsControlKeyDown",
+    "IsShiftKeyDown",
     -- Misc
     "GetTime",
     "RAID_CLASS_COLORS",

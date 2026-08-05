@@ -5,18 +5,34 @@
 
 local _, AZT = ...
 
--- The top-down room view: room circle, map art backdrop, quadrant wedges
--- and the player as a live marker. Follows the delve automatically for as
--- long as the player wants it around. /azt room and the options panel
--- decide that.
+-- The top-down room view: room circle, map art backdrop and quadrant
+-- wedges, north up. Follows the delve automatically for as long as the
+-- player wants it around. /azt room and the options panel decide that.
 
 local SIZE = 300 -- canvas px, covers 2 * (radius + pad) yards
 local GRID_ROT = math.rad(45) -- the quarter grid sits turned so boundaries hit the diagonals
 
-local VIEW_MODES = { "static", "rotate", "player" }
-local VIEW_MODE_LABEL = { static = "North up", rotate = "Facing up", player = "Centered" }
-
 local view
+
+-- players who drop world marker flags in the room think in those, not in
+-- compass letters, so each section label can show a marker icon instead
+local MARKS = { "Star", "Circle", "Diamond", "Triangle", "Moon", "Square", "Cross", "Skull" }
+
+local function labelMenu(owner, qname)
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle(qname .. " section shows")
+        root:CreateButton("Letter " .. qname, function()
+            AztarecHelperDB.quadIcons[qname] = nil
+            AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
+        end)
+        for i, mark in ipairs(MARKS) do
+            root:CreateButton(("|T" .. AZT.MARK_TEX .. ":16|t %s"):format(i, mark), function()
+                AztarecHelperDB.quadIcons[qname] = i
+                AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
+            end)
+        end
+    end)
+end
 
 local function build()
     local ROOM = AZT.ROOM
@@ -56,49 +72,21 @@ local function build()
     title:SetText("Azta'rec Helper addon")
 
     local optBtn = CreateFrame("Button", nil, view, "UIPanelButtonTemplate")
-    optBtn:SetSize(44, 18)
+    optBtn:SetSize(74, 18)
     optBtn:SetPoint("TOPLEFT", 6, -4)
-    optBtn:SetText("Opts")
+    optBtn:SetText("Options")
     optBtn:SetScript("OnClick", function()
         AZT.OpenOptions()
     end)
 
-    local helpBtn = CreateFrame("Button", nil, view)
-    helpBtn:SetSize(18, 18)
-    helpBtn:SetPoint("TOPRIGHT", -6, -4)
-    local helpMark = helpBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    helpMark:SetPoint("CENTER")
-    helpMark:SetText("|cffffd200?|r")
-    helpBtn:SetScript("OnEnter", function(btn)
-        GameTooltip:SetOwner(btn, "ANCHOR_TOPRIGHT")
-        GameTooltip:AddLine("Azta'rec Helper")
-        GameTooltip:AddLine(
-            "Stand in the safe quarter while the wave markers are visible. The route records itself.",
-            1,
-            1,
-            1,
-            true
-        )
-        GameTooltip:AddLine(
-            "When the boss repeats the waves without markers, green is safe now, yellow is safe next, red gets hit.",
-            1,
-            1,
-            1,
-            true
-        )
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddDoubleLine("/azt room", "show or hide this window", 1, 0.82, 0, 1, 1, 1)
-        GameTooltip:AddDoubleLine("/azt spin", "north up, facing up or centered on you", 1, 0.82, 0, 1, 1, 1)
-        GameTooltip:AddDoubleLine("/azt map", "map backdrop on or off", 1, 0.82, 0, 1, 1, 1)
-        GameTooltip:AddDoubleLine("/azt cap", "record your quarter by hand (bindable key)", 1, 0.82, 0, 1, 1, 1)
-        GameTooltip:AddDoubleLine("/azt manual", "record every spot yourself, no auto recording", 1, 0.82, 0, 1, 1, 1)
-        GameTooltip:AddDoubleLine("/azt reset", "clear the recorded route", 1, 0.82, 0, 1, 1, 1)
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Drag the window to move it.", 0.7, 0.7, 0.7)
-        GameTooltip:Show()
-    end)
-    helpBtn:SetScript("OnLeave", function()
-        GameTooltip:Hide()
+    -- the old ? in the corner held a tooltip nobody hovered mid-fight, so
+    -- the strip the status line used to occupy carries a real button now
+    local instrBtn = CreateFrame("Button", nil, view, "UIPanelButtonTemplate")
+    instrBtn:SetSize(104, 18)
+    instrBtn:SetPoint("BOTTOM", 0, 3)
+    instrBtn:SetText("Instructions")
+    instrBtn:SetScript("OnClick", function()
+        AZT.ShowInstructions()
     end)
 
     local canvas = CreateFrame("Frame", nil, view)
@@ -194,6 +182,9 @@ local function build()
     }
     local rp = ROOM.radius * ppy
     local wedges, qlabels = {}, {}
+    local labelBtns = {}
+    local labelHints = {}
+    local menuBtns = {}
     for i, q in ipairs(QUADS) do
         local w = canvas:CreateTexture(nil, "ARTWORK", nil, 3)
         w:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
@@ -204,6 +195,50 @@ local function build()
         local fs = canvas:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetTextColor(1, 1, 1, 0.65)
         qlabels[i] = fs
+        -- little dropdown arrow that advertises the icon menu while nothing
+        -- is going on. QuadClickSync shows and hides it
+        local hint = canvas:CreateTexture(nil, "OVERLAY")
+        hint:SetSize(12, 12)
+        hint:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+        hint:SetRotation(-math.pi / 2)
+        hint:SetVertexColor(1, 0.82, 0, 0.6)
+        hint:SetPoint("LEFT", fs, "RIGHT", 0, -1)
+        hint:Hide()
+        labelHints[i] = hint
+        -- the click target rides on the label
+        local btn = CreateFrame("Button", nil, canvas)
+        btn:SetAllPoints(fs)
+        btn:SetScript("OnClick", function()
+            labelMenu(btn, q.name)
+        end)
+        btn:SetScript("OnEnter", function(b)
+            hint:SetVertexColor(1, 0.82, 0, 1)
+            GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Click to show a world marker icon here instead of the letter", 1, 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        btn:SetScript("OnLeave", function()
+            hint:SetVertexColor(1, 0.82, 0, 0.6)
+            GameTooltip:Hide()
+        end)
+        labelBtns[#labelBtns + 1] = btn
+        menuBtns[i] = btn
+    end
+
+    -- each quarter wears the key that records it, so the board teaches the
+    -- keys instead of the player having to remember which is which
+    local BIND_CMD = {
+        N = "AZTARECHELPER_MARK_NORTH",
+        E = "AZTARECHELPER_MARK_EAST",
+        S = "AZTARECHELPER_MARK_SOUTH",
+        W = "AZTARECHELPER_MARK_WEST",
+    }
+    local keyTags = {}
+    for i in ipairs(QUADS) do
+        local tag = canvas:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        tag:SetPoint("TOP", qlabels[i], "BOTTOM", 0, -1)
+        tag:SetTextColor(1, 0.82, 0, 0.75)
+        keyTags[i] = tag
     end
 
     -- center marker (boss mechanic spot)
@@ -212,205 +247,136 @@ local function build()
     center:SetPoint("CENTER")
     center:SetColorTexture(1, 0.35, 0.35, 0.9)
 
-    -- compass letters, repositioned when the view rotates with facing
-    local compass = {}
+    -- compass letters on the view edge
     local edge = SIZE / 2 - 8
     for _, c in ipairs({ { "N", 0, 1 }, { "E", 1, 0 }, { "S", 0, -1 }, { "W", -1, 0 } }) do
         local fs = canvas:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         fs:SetText(c[1])
-        compass[#compass + 1] = { fs = fs, dx = c[2], dy = c[3] }
+        fs:SetPoint("CENTER", canvas, "CENTER", c[2] * edge, c[3] * edge)
     end
 
-    -- positions only. Text and colors belong to AZT.SetSafeQuads since this
-    -- runs every frame in the rotating/centered view modes. mapRot rotates the
-    -- room around its center. offX/offY shift the room (player-centered mode).
-    local function layoutQuads(mapRot, offX, offY)
-        mapRot = mapRot or view.mapRot or 0
-        offX = offX or view.offX or 0
-        offY = offY or view.offY or 0
-        view.mapRot, view.offX, view.offY = mapRot, offX, offY
-        local cosm, sinm = math.cos(mapRot), math.sin(mapRot)
-        for _, tl in ipairs(artTiles) do
-            tl.tex:SetRotation(mapRot)
-            tl.tex:ClearAllPoints()
-            tl.tex:SetPoint(
-                "CENTER",
-                canvas,
-                "CENTER",
-                offX + tl.dx * cosm - tl.dy * sinm,
-                offY + tl.dx * sinm + tl.dy * cosm
-            )
-        end
-        for _, c in ipairs(compass) do
-            c.fs:ClearAllPoints()
-            c.fs:SetPoint(
-                "CENTER",
-                canvas,
-                "CENTER",
-                (c.dx * cosm - c.dy * sinm) * edge,
-                (c.dx * sinm + c.dy * cosm) * edge
-            )
-        end
-        disc:ClearAllPoints()
-        disc:SetPoint("CENTER", canvas, "CENTER", offX, offY)
-        center:ClearAllPoints()
-        center:SetPoint("CENTER", canvas, "CENTER", offX, offY)
-        local rot = GRID_ROT + mapRot
-        local cosr, sinr = math.cos(rot), math.sin(rot)
-        ns:SetRotation(rot)
-        ns:ClearAllPoints()
-        ns:SetPoint("CENTER", canvas, "CENTER", offX, offY)
-        ew:SetRotation(rot)
-        ew:ClearAllPoints()
-        ew:SetPoint("CENTER", canvas, "CENTER", offX, offY)
-        for i, q in ipairs(QUADS) do
-            -- wedge bbox center sits at (dx, dy) * r/2 from room center:
-            -- rotating texture about its own bbox center + moving the bbox
-            -- center along the same rotation = rotation about room center
-            local ox, oy = q.dx * rp / 2, q.dy * rp / 2
-            local w = wedges[i]
-            w:ClearAllPoints()
-            w:SetPoint("CENTER", canvas, "CENTER", offX + ox * cosr - oy * sinr, offY + ox * sinr + oy * cosr)
-            w:SetRotation(rot)
-            local lx, ly = q.dx * 0.62 * rp / 1.4142, q.dy * 0.62 * rp / 1.4142
-            local fs = qlabels[i]
-            fs:ClearAllPoints()
-            fs:SetPoint("CENTER", canvas, "CENTER", offX + lx * cosr - ly * sinr, offY + lx * sinr + ly * cosr)
-        end
+    -- fixed north-up layout. The grid draws turned 45 degrees so the wedges
+    -- center on their cardinal names and the boundaries land on the
+    -- diagonals. Text and colors belong to AZT.SetSafeQuads.
+    local cosr, sinr = math.cos(GRID_ROT), math.sin(GRID_ROT)
+    ns:SetRotation(GRID_ROT)
+    ew:SetRotation(GRID_ROT)
+    for _, tl in ipairs(artTiles) do
+        tl.tex:SetPoint("CENTER", canvas, "CENTER", tl.dx, tl.dy)
     end
-    view.layoutQuads = layoutQuads
+    for i, q in ipairs(QUADS) do
+        -- wedge bbox center sits at (dx, dy) * r/2 from room center:
+        -- rotating texture about its own bbox center + moving the bbox
+        -- center along the same rotation = rotation about room center
+        local ox, oy = q.dx * rp / 2, q.dy * rp / 2
+        wedges[i]:SetPoint("CENTER", canvas, "CENTER", ox * cosr - oy * sinr, ox * sinr + oy * cosr)
+        wedges[i]:SetRotation(GRID_ROT)
+        local lx, ly = q.dx * 0.62 * rp / 1.4142, q.dy * 0.62 * rp / 1.4142
+        qlabels[i]:SetPoint("CENTER", canvas, "CENTER", lx * cosr - ly * sinr, lx * sinr + ly * cosr)
+    end
     view.QUADS, view.wedges, view.qlabels = QUADS, wedges, qlabels
-    layoutQuads(0, 0, 0)
     AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
 
-    -- player arrow (texture points north, SetRotation is CCW like facing)
-    local arrow = canvas:CreateTexture(nil, "OVERLAY")
-    arrow:SetSize(30, 30)
-    arrow:SetTexture("Interface\\Minimap\\MinimapArrow")
-    arrow:SetPoint("CENTER")
-    view.arrow = arrow
+    -- clicking a quarter during the memory game records it, same as its
+    -- section key. The targets only exist while a recording window is open,
+    -- so outside the game they steal no clicks from dragging or the icon
+    -- menus, and they stay deliberately outside the padlock's reach since
+    -- the lock is there to stop accidental drags, not mid-fight input
+    local quadHits = {}
+    for i, q in ipairs(QUADS) do
+        -- own layer for the hover glow, so the route repaint and the mouse
+        -- never fight over one texture's color
+        local glow = canvas:CreateTexture(nil, "ARTWORK", nil, 4)
+        glow:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+        glow:SetTexCoord(unpack(q.tc))
+        glow:SetAllPoints(wedges[i])
+        glow:SetRotation(GRID_ROT)
+        glow:SetBlendMode("ADD")
+        glow:SetVertexColor(1, 1, 1, 0.16)
+        glow:Hide()
 
-    -- fallback marker when facing is unavailable (combat restrictions):
-    -- position still shows but the direction doesn't pretend to be known
-    local blip = canvas:CreateTexture(nil, "OVERLAY")
-    blip:SetSize(10, 10)
-    blip:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-    blip:SetVertexColor(1, 0.9, 0.2, 1)
-    blip:SetPoint("CENTER")
-    blip:Hide()
-    view.blip = blip
-
-    local status = view:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    status:SetPoint("BOTTOM", 0, 8)
-    view.status = status
-
-    AZT.AttachLock(view, "room", { helpBtn }, -26, -4)
-
-    local elapsed = 0
-    view:SetScript("OnUpdate", function(_, dt)
-        elapsed = elapsed + dt
-        if elapsed < 0.05 then
-            return
-        end
-        elapsed = 0
-
-        local ok, a, b = pcall(UnitPosition, "player")
-        if not ok or not a or not b then
-            arrow:Hide()
-            blip:Hide()
-            status:SetText("position unavailable")
-            return
-        end
-
-        -- room-local yards: x = east(+)/west(-), y = north(+)/south(-)
-        local okX, x, y = pcall(function()
-            return ROOM.centerB - b, a - ROOM.centerA
+        local hit = CreateFrame("Button", nil, canvas)
+        hit:SetAllPoints(wedges[i])
+        -- above the label buttons, so a click near a letter still records
+        hit:SetFrameLevel(canvas:GetFrameLevel() + 5)
+        hit:SetScript("OnClick", function()
+            AZT.Safe.CaptureQuadrant(q.name)
         end)
-        if not okX then
-            arrow:Hide()
-            blip:Hide()
-            status:SetText("position secret")
-            return
-        end
+        hit:SetScript("OnEnter", function()
+            glow:Show()
+        end)
+        hit:SetScript("OnLeave", function()
+            glow:Hide()
+        end)
+        hit:SetScript("OnHide", function()
+            glow:Hide()
+        end)
+        hit:Hide()
+        quadHits[i] = hit
+    end
 
-        local dist = math.sqrt(x * x + y * y)
-        local maxR = ROOM.radius + ROOM.pad
-        local alpha = 1
-        if dist > maxR then
-            -- clamp to the view edge, dimmed, so it still shows the direction
-            x, y = x * maxR / dist, y * maxR / dist
-            alpha = 0.4
-        end
-
-        local okF, facing = pcall(GetPlayerFacing)
-
-        -- view modes: static = north up; rotate = facing up; player = facing
-        -- up AND player pinned to the canvas center, room moves around them
-        local mode = AztarecHelperDB.viewMode or "static"
-        local mapRot = 0
-        if mode ~= "static" and okF and facing then
-            local okN, neg = pcall(function()
-                return -facing
-            end)
-            if okN and type(neg) == "number" then
-                mapRot = neg
+    function AZT.QuadClickSync()
+        local w = AZT.Wave
+        local recording = w and w.phase == "record"
+        -- the quarters stay clickable through the echoes while any wave is
+        -- still blank, since backfilling one is the only thing a click can
+        -- do by then
+        local canAnswer = recording
+        if not canAnswer and w and w.phase == "echo" then
+            for _, s in ipairs(AZT.safeList or {}) do
+                if s == "?" then
+                    canAnswer = true
+                    break
+                end
             end
         end
-        local cosm, sinm = math.cos(mapRot), math.sin(mapRot)
-        local sx, sy = x * cosm - y * sinm, x * sinm + y * cosm
-        local offX, offY, mx, my = 0, 0, sx * ppy, sy * ppy
-        if mode == "player" then
-            offX, offY, mx, my = -sx * ppy, -sy * ppy, 0, 0
+        for _, hit in ipairs(quadHits) do
+            hit:SetShown(canAnswer and true or false)
         end
-        if
-            math.abs(mapRot - (view.mapRot or 0)) > 0.01
-            or math.abs(offX - (view.offX or 0)) > 0.5
-            or math.abs(offY - (view.offY or 0)) > 0.5
-        then
-            view.layoutQuads(mapRot, offX, offY)
+        -- the icon menus belong to the quiet moments. Mid-fight they would
+        -- sit on top of the quarters and swallow clicks meant for recording,
+        -- so they go away with their arrows
+        local calm = not recording
+            and not AZT.safeNow
+            and not (w and w.phase)
+            and not (AZT.inCombat or InCombatLockdown())
+        for i, hint in ipairs(labelHints) do
+            hint:SetShown(calm and true or false)
+            menuBtns[i]:SetShown(calm and true or false)
         end
+        -- the key tags help while learning and while recording, during the
+        -- echoes the board is telling you where to go instead
+        local echoing = w and (w.phase == "echo" or w.phase == "replay")
+        for i, q in ipairs(QUADS) do
+            local key = GetBindingKey(BIND_CMD[q.name])
+            keyTags[i]:SetText(key and GetBindingText(key) or "")
+            keyTags[i]:SetShown((key and not echoing) and true or false)
+        end
+    end
+    AZT.QuadClickSync()
 
-        -- facing may go secret/nil in combat: fall back to the plain blip
-        local marker
-        local okR, rotVal = pcall(function()
-            return facing + mapRot
-        end)
-        if okF and facing and okR and pcall(arrow.SetRotation, arrow, rotVal) then
-            marker = arrow
-            blip:Hide()
-        else
-            marker = blip
-            arrow:Hide()
-        end
-        marker:SetAlpha(alpha)
-        marker:ClearAllPoints()
-        marker:SetPoint("CENTER", canvas, "CENTER", mx, my)
-        marker:Show()
-
-        local okS, s = pcall(
-            string.format,
-            "%.1f yd %s of center",
-            dist,
-            dist < 1 and "" or (y >= 0 and (x >= 0 and "NE" or "NW") or (x >= 0 and "SE" or "SW"))
-        )
-        status:SetText(okS and s or "")
-    end)
+    AZT.AttachLock(view, "room", labelBtns, -6, -4)
 end
 
 -- highlight the captured safe-spot sequence (list of quadrant names).
 -- Without activeIdx (capture phase): captured spots green + numbered.
 -- With activeIdx (echo replay): current safe = green, next safe = yellow,
 -- all other quadrants = red danger. Empty/nil list restores neutral.
--- marks[k] flags spots that were recorded shakily. They get a ? suffix.
-function AZT.SetSafeQuads(list, activeIdx, marks)
+function AZT.SetSafeQuads(list, activeIdx)
     local safeNow = list and activeIdx and list[activeIdx] or nil
     local nextNow = list and activeIdx and list[activeIdx + 1] or nil
-    AZT.safeNow, AZT.nextNow = safeNow, nextNow
+    AZT.safeNow, AZT.nextNow, AZT.safeList = safeNow, nextNow, list
     AZT.stayText = safeNow
-            and (nextNow and nextNow ~= safeNow and ("stay " .. safeNow .. ", next " .. nextNow) or ("stay " .. safeNow))
+            and (nextNow and nextNow ~= safeNow and ("stay " .. AZT.QuadName(safeNow, 18) .. ", next " .. AZT.QuadName(
+                nextNow,
+                18
+            )) or ("stay " .. AZT.QuadName(safeNow, 18)))
         or nil
     if AZT.ArrowSync then
         AZT.ArrowSync()
+    end
+    if AZT.QuadClickSync then
+        AZT.QuadClickSync()
     end
     if not view then
         return
@@ -419,10 +385,11 @@ function AZT.SetSafeQuads(list, activeIdx, marks)
         local orders = {}
         for k, sq in ipairs(list or {}) do
             if sq == q.name then
-                orders[#orders + 1] = (marks and marks[k]) and (k .. "?") or tostring(k)
+                orders[#orders + 1] = tostring(k)
             end
         end
-        local label = #orders > 0 and (table.concat(orders, ",") .. ":" .. q.name) or q.name
+        local disp = AZT.QuadName(q.name, 42)
+        local label = #orders > 0 and (table.concat(orders, ",") .. ":" .. disp) or disp
         local w, fs = view.wedges[i], view.qlabels[i]
         if safeNow then
             if q.name == safeNow then
@@ -442,8 +409,11 @@ function AZT.SetSafeQuads(list, activeIdx, marks)
             fs:SetText(label)
         else
             w:SetVertexColor(1, 1, 1, q.shade)
-            fs:SetText(q.name)
-            fs:SetTextColor(1, 1, 1, 0.65)
+            fs:SetText(disp)
+            -- the letters sit back at 0.65 but a chosen marker icon draws
+            -- fully opaque, it is the player's own landmark
+            local hasIcon = AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q.name]
+            fs:SetTextColor(1, 1, 1, hasIcon and 1 or 0.65)
         end
     end
 end
@@ -461,19 +431,6 @@ function AZT.ToggleMapArt()
         view.disc:SetVertexColor(0.25, 0.45, 0.70, (on and haveArt) and 0.15 or 0.40)
     end
     AZT.chat("map art backdrop: " .. (on and "ON" or "OFF"))
-end
-
-function AZT.CycleViewMode(silent)
-    local cur = AztarecHelperDB.viewMode or "static"
-    for i, m in ipairs(VIEW_MODES) do
-        if m == cur then
-            AztarecHelperDB.viewMode = VIEW_MODES[i % #VIEW_MODES + 1]
-            break
-        end
-    end
-    if not silent then
-        AZT.chat("room view mode: " .. VIEW_MODE_LABEL[AztarecHelperDB.viewMode])
-    end
 end
 
 -- the preference is remembered, so a hidden room view stays hidden across
@@ -508,10 +465,6 @@ function AZT.EnsureRoomView()
     end
 end
 
-function AZT.ViewModeLabel()
-    return VIEW_MODE_LABEL[AztarecHelperDB.viewMode or "static"]
-end
-
 -- auto show/hide on zone change
 local zf = CreateFrame("Frame")
 zf:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -531,6 +484,12 @@ zf:SetScript("OnEvent", function(_, event)
     end
     if AZT.ArrowSync then
         AZT.ArrowSync()
+    end
+    if AZT.WaveSync then
+        AZT.WaveSync()
+    end
+    if AZT.QuadClickSync then
+        AZT.QuadClickSync()
     end
     if AZT.InDelve() and AztarecHelperDB.roomView then
         if not view then

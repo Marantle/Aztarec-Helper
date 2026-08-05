@@ -5,27 +5,30 @@
 
 local _, AZT = ...
 
--- Auto safe-spot tracking for the Azta'rec wave mechanic. While the boss
--- channels, the player's quadrant is sampled continuously and each wave takes
--- the majority quadrant around its measured hit time. When the hidden echoes
--- start right after the channel, each cast start calls out where to stand.
+-- Safe-spot tracking for the Azta'rec wave mechanic. While the boss channels,
+-- a capture window opens per wave on the measured hit grid and the player
+-- keys the quarter they run to. When the hidden echoes start right after the
+-- channel, each cast start calls the recording back.
 
 local Safe = {}
 AZT.Safe = Safe
 
 BINDING_HEADER_AZTARECHELPER = "Azta'rec Helper"
-BINDING_NAME_AZTARECHELPER_CAPTURE = "Capture safe spot (manual override)"
+BINDING_NAME_AZTARECHELPER_MARK_NORTH = "Azta'rec Helper: mark north safe"
+BINDING_NAME_AZTARECHELPER_MARK_EAST = "Azta'rec Helper: mark east safe"
+BINDING_NAME_AZTARECHELPER_MARK_SOUTH = "Azta'rec Helper: mark south safe"
+BINDING_NAME_AZTARECHELPER_MARK_WEST = "Azta'rec Helper: mark west safe"
 
 local seq = {}
 local armed = false
 
--- auto-capture state
-local sampler
+-- capture state
+local ticker
 local winIdx = 0
 local chanStartT = 0
 -- per-difficulty cone hit grids (offsets after CHAN_START), measured via
 -- deliberate deaths on the PTR. Both difficulties end the channel ~0.5s
--- after the last hit. Wave count grows per channel, so waves keep locking
+-- after the last hit. Wave count grows per channel, so windows keep opening
 -- until the channel actually stops.
 local GRIDS = {
     [3508] = { first = 3.04, spacing = 3.5 }, -- "?"
@@ -33,17 +36,11 @@ local GRIDS = {
 }
 local grid = GRIDS[3508]
 local MAX_WAVES = 10
-local VOTE_HALF = 0.7 -- majority vote over hit +/- this many seconds
-local LOCK_DELAY = 0.7 -- lock the spot this long after the hit
-local samples = {} -- { t = seconds since CHAN_START, q = quadrant }
-local manualWin = {} -- windows overridden by the capture key
+local LOCK_DELAY = 0.8 -- the window closes this long after its hit
 local chanUnit = nil -- unit token that ran the channel, its casts are the echoes
-local capturing = false -- a channel is being recorded (auto sampler or manual)
-local lastCapture = 0 -- Capture() throttle so a double-tap can't append twice
-local shaky = {} -- waves voted without a clear majority (player was crossing quadrants)
+local capturing = false -- a channel is being recorded
 local lastPull -- most recent recorded route, kept for review and replay
 
-local CONF_SHARE = 0.8 -- a winning quadrant below this share of its vote window is marked uncertain
 local REPLAY_LEAD = 1.8 -- pause before a replay's first wave
 local REPLAY_TAIL = 1.8 -- how long the last replay wave stays lit
 
@@ -51,30 +48,25 @@ local REPLAY_TAIL = 1.8 -- how long the last replay wave stays lit
 local wave = { phase = nil, idx = 0, total = nil, at = nil }
 AZT.Wave = wave
 
-local function setWave(phase, idx, total, at)
+local function setWave(phase, idx, total, at, startedAt, gap)
     wave.phase, wave.idx, wave.total, wave.at = phase, idx, total, at
+    -- when the echo started and how long the last one ran. The encounter
+    -- hides cast end times, so this pair is the only handle on when the
+    -- next call is due.
+    wave.startedAt, wave.gap = startedAt, gap
     if AZT.WaveSync then
         AZT.WaveSync()
     end
     if AZT.ArrowSync then
         AZT.ArrowSync()
     end
+    if AZT.QuadClickSync then
+        AZT.QuadClickSync()
+    end
 end
 
 local function hitTime(i)
     return grid.first + grid.spacing * (i - 1)
-end
-
--- channel duration = first + (n-1)*spacing + ~0.46 trail on every measured
--- pull, so the duration alone identifies the grid: how far is the measured
--- length from this grid's nearest whole-wave length?
-local GRID_LIST = { GRIDS[3508], GRIDS[3525] }
-local function gridFitError(g, elapsed)
-    local n = math.floor((elapsed - 0.46 - g.first) / g.spacing + 0.5) + 1
-    if n < 1 then
-        n = 1
-    end
-    return math.abs(g.first + (n - 1) * g.spacing + 0.46 - elapsed)
 end
 
 -- echo state
@@ -93,17 +85,6 @@ local function seqText()
     return #seq > 0 and table.concat(seq, "  >  ") or "?"
 end
 
--- Which quadrant a room-local offset falls in. Shared with the room view so
--- both bucket the same way.
-function Safe.QuadrantFromXY(x, y)
-    -- compass angle: 0 = north, 90 = east
-    local ang = math.deg(math.atan2(x, y))
-    if ang < 0 then
-        ang = ang + 360
-    end
-    return QUADRANTS[math.floor(((ang + 45) % 360) / 90) + 1]
-end
-
 local QUAD_INDEX = {}
 for i, q in ipairs(QUADRANTS) do
     QUAD_INDEX[q] = i
@@ -120,172 +101,86 @@ function Safe.TurnFromTo(from, to)
     return TURNS[(b - a) % 4]
 end
 
--- Which quadrant the player stands in, relative to the room center.
-function Safe.CurrentQuadrant()
-    local ok, a, b = pcall(UnitPosition, "player")
-    if not ok or not a or not b then
-        return nil
-    end
-    local R = AZT.ROOM
-    local okC, x, y = pcall(function()
-        return R.centerB - b, a - R.centerA
-    end)
-    if not okC then
-        return nil
-    end
-    return Safe.QuadrantFromXY(x, y), x, y
-end
-
 --#region Capture
 
-function Safe.StopSampler()
-    if sampler then
-        sampler:Cancel()
-        sampler = nil
+local function stopTicker()
+    if ticker then
+        ticker:Cancel()
+        ticker = nil
     end
 end
 
--- majority quadrant around a wave hit. Ties go to the most recently occupied.
--- Also says how sure the vote was: a winner that only scraped by (player was
--- mid-run between quadrants) gets flagged, and the display marks it.
-local function voteQuadrant(hitT)
-    local from, to = hitT - VOTE_HALF, hitT + VOTE_HALF
-    local counts, lastAt = {}, {}
-    local total = 0
-    for _, s in ipairs(samples) do
-        if s.q and s.t >= from and s.t <= to then
-            counts[s.q] = (counts[s.q] or 0) + 1
-            lastAt[s.q] = s.t
-            total = total + 1
-        end
-    end
-    local best
-    for q in pairs(counts) do
-        if not best or counts[q] > counts[best] or (counts[q] == counts[best] and lastAt[q] > lastAt[best]) then
-            best = q
-        end
-    end
-    local sure = best ~= nil and total >= 3 and counts[best] / total >= CONF_SHARE
-    return best, sure
-end
-
-local function lockWindow(i, early)
-    if manualWin[i] then
-        return
-    end
-    local q, sure = voteQuadrant(hitTime(i))
-    seq[i] = q or Safe.CurrentQuadrant() or "?"
-    shaky[i] = (not (q and sure)) or nil
-    AZT.Log(("AUTOSPOT %d = %s%s%s"):format(i, seq[i], shaky[i] and " (shaky)" or "", early and " (early)" or ""))
-end
-
-local function beginCapture(unit)
-    Safe.StopSampler()
-    wipe(seq)
-    wipe(samples)
-    wipe(manualWin)
-    wipe(shaky)
-    chanUnit = unit
-    chanStartT = GetTime()
-    capturing = true
-    if AZT.SetSafeQuads then
-        AZT.SetSafeQuads(seq)
-    end
-end
-
--- keep a copy of the route for review and replay, since the live tables get
+-- keep a copy of the route for review and replay, since the live table gets
 -- wiped the moment the next channel starts
 local function snapshotPull()
     if #seq == 0 then
         return
     end
-    lastPull = { seq = {}, shaky = {}, grid = grid, death = nil }
+    lastPull = { seq = {}, grid = grid, death = nil }
     for i, q in ipairs(seq) do
         lastPull.seq[i] = q
-        lastPull.shaky[i] = shaky[i]
     end
 end
 
--- manual mode: the channel only marks when recording is open. Every spot
--- comes from the capture key
-local function beginManualCapture(unit)
-    beginCapture(unit)
-    winIdx = 0
-    AZT.Log("MANUAL capture open - waiting for capture key presses")
-end
-
-local function beginAutoCapture(unit)
-    beginCapture(unit)
+-- the window walk. The ticker advances the wave index for the countdown
+-- display and closes windows the player never keyed, every spot comes fromt
+-- the section keys.
+local function beginCapture(unit)
+    stopTicker()
+    wipe(seq)
+    chanUnit = unit
+    chanStartT = GetTime()
+    capturing = true
     winIdx = 1
-    -- the sampler runs until CHAN_STOP: the wave count is not known up front
-    sampler = C_Timer.NewTicker(0.2, function()
+    if AZT.SetSafeQuads then
+        AZT.SetSafeQuads(seq)
+    end
+    ticker = C_Timer.NewTicker(0.2, function()
         if winIdx > MAX_WAVES then
             return
         end
         local elapsed = GetTime() - chanStartT
-        samples[#samples + 1] = { t = elapsed, q = Safe.CurrentQuadrant() }
         setWave("record", winIdx, nil, chanStartT + hitTime(winIdx))
         if elapsed >= hitTime(winIdx) + LOCK_DELAY then
-            lockWindow(winIdx)
+            if seq[winIdx] == nil then
+                seq[winIdx] = "?"
+                AZT.Log(("WINDOW %d closed with no input"):format(winIdx))
+            end
             winIdx = winIdx + 1
             if AZT.SetSafeQuads then
-                AZT.SetSafeQuads(seq, nil, shaky)
+                AZT.SetSafeQuads(seq)
             end
         end
     end)
+    AZT.Log("CAPTURE open - key each wave's section as you run it")
 end
 
-local function finishAutoCapture()
-    local wasManual = capturing and not sampler and chanUnit ~= nil
+local function finishCapture()
     capturing = false
-    if wasManual then
-        AZT.Log(("MANUAL capture closed on channel stop: %s"):format(seqText()))
+    if not ticker then
+        return
     end
-    if sampler then
-        Safe.StopSampler()
-        local elapsed = GetTime() - chanStartT
-        if elapsed < 8 then
-            -- real wave channels run 10.5s or longer. Something shorter slipped
-            -- through the filters (or the boss died) - discard, don't replay
-            AZT.Log(("CHANNEL discarded after %.1fs - not the wave mechanic"):format(elapsed))
-            Safe.Reset()
-            return
-        end
-        -- fallback for renumbered encounter ids / retuned timings: if the
-        -- measured channel length doesn't fit the id-selected grid, re-fit
-        -- against all known grids and re-vote every wave from the stored
-        -- samples (they cover the whole channel, so nothing is lost)
-        if gridFitError(grid, elapsed) > 0.3 then
-            local best, bestErr
-            for _, g in ipairs(GRID_LIST) do
-                local e = gridFitError(g, elapsed)
-                if not bestErr or e < bestErr then
-                    best, bestErr = g, e
-                end
-            end
-            if best ~= grid and bestErr <= 0.3 then
-                grid = best
-                AZT.Log(("GRID re-fit from %.2fs channel (err %.2fs) - re-voting all waves"):format(elapsed, bestErr))
-                wipe(seq)
-                wipe(manualWin)
-                wipe(shaky)
-                winIdx = 1
-            else
-                AZT.Log(
-                    ("GRID warning: %.2fs channel fits no known wave grid (best err %.2fs)"):format(elapsed, bestErr)
-                )
-            end
-        end
-        -- lock any wave whose hit already landed but wasn't locked yet
-        -- (the last hit comes ~0.5s before CHAN_STOP)
-        while winIdx <= MAX_WAVES and hitTime(winIdx) <= elapsed + 0.6 do
-            lockWindow(winIdx, true)
-            winIdx = winIdx + 1
-        end
-        AZT.Log(("AUTOSPOT finalized on channel stop after %.1fs: %s"):format(elapsed, seqText()))
+    stopTicker()
+    local elapsed = GetTime() - chanStartT
+    if elapsed < 8 then
+        -- real wave channels run 10.5s or longer. Something shorter slipped
+        -- through the filters (or the boss died) - discard, don't replay
+        AZT.Log(("CHANNEL discarded after %.1fs - not the wave mechanic"):format(elapsed))
+        Safe.Reset()
+        return
     end
+    -- close out to the last hit that landed. Unkeyed waves stay "?" and
+    -- their echoes show as unknown, there is nothing to reconstruct from
+    -- when the player is the only sensor
+    while winIdx <= MAX_WAVES and hitTime(winIdx) <= elapsed + 0.6 do
+        if seq[winIdx] == nil then
+            seq[winIdx] = "?"
+        end
+        winIdx = winIdx + 1
+    end
+    AZT.Log(("CAPTURE closed after %.1fs: %s"):format(elapsed, seqText()))
     if AZT.SetSafeQuads then
-        AZT.SetSafeQuads(seq, nil, shaky)
+        AZT.SetSafeQuads(seq)
     end
     snapshotPull()
     setWave(nil, 0, nil, nil)
@@ -303,52 +198,70 @@ local function finishAutoCapture()
     end)
 end
 
--- capture key: overrides the current auto window during an auto-recorded
--- channel, otherwise appends (manual mode, or fallback if the channel isn't
--- detected). Throttled so a double-tap can't write two waves.
-function Safe.Capture()
-    local nowT = GetTime()
-    if nowT - lastCapture < 0.5 then
+-- section keys: the player names the quarter outright, no position read
+-- anywhere. Answers land in order. The earliest wave still unanswered takes
+-- the press, and nothing can be answered before its wave has happened, so
+-- missing one and tapping twice gets you level again instead of shifting
+-- the whole route. A wave still blank when the echoes start can be filled
+-- right up until its own echo plays. Outside a channel it appends, for
+-- walking a route in by hand between pulls.
+local function fillSpot(i, q, caught)
+    seq[i] = q
+    AZT.Log(("SAFESPOT keyed %d = %s%s"):format(i, q, caught and " (caught up)" or ""))
+    AZT.chat(("safe spot %d: %s"):format(i, AZT.QuadName(q, 14)))
+    if AZT.SetSafeQuads then
+        AZT.SetSafeQuads(seq, echoIdx > 0 and echoIdx or nil)
+    end
+end
+
+function Safe.CaptureQuadrant(q)
+    if not QUAD_INDEX[q] then
         return
     end
-    lastCapture = nowT
-    local q, x, y = Safe.CurrentQuadrant()
-    if not q then
-        AZT.chat("capture failed - position unavailable")
+    -- how far the boss has actually got: the open window while the channel
+    -- runs, the whole recorded route once it has stopped
+    local limit = capturing and math.min(winIdx, MAX_WAVES) or #seq
+    for i = 1, limit do
+        if seq[i] == nil or seq[i] == "?" then
+            fillSpot(i, q, i < limit)
+            return
+        end
+    end
+    if capturing and limit >= 1 then
+        -- level with the boss, so the press corrects the wave in front of you
+        fillSpot(limit, q)
         return
     end
-    if sampler and winIdx >= 1 and winIdx <= MAX_WAVES then
-        seq[winIdx] = q
-        manualWin[winIdx] = true
-        shaky[winIdx] = nil
-        AZT.Log(("SAFESPOT manual override %d = %s"):format(winIdx, q))
-        AZT.chat(("manual override: spot %d = %s"):format(winIdx, q))
+    if echoIdx > 0 then
         return
     end
     if #seq >= MAX_WAVES then
         wipe(seq)
-        wipe(shaky)
     end
-    seq[#seq + 1] = q
-    AZT.Log(("SAFESPOT %d = %s (x=%.1f y=%.1f)"):format(#seq, q, x, y))
-    if AZT.SetSafeQuads then
-        AZT.SetSafeQuads(seq, nil, shaky)
-    end
-    AZT.chat(("safe spot %d captured: %s"):format(#seq, q))
+    fillSpot(#seq + 1, q)
 end
 
--- global for Bindings.xml
-function AztarecHelper_Capture()
-    Safe.Capture()
+-- globals for Bindings.xml, one per section
+function AztarecHelper_MarkNorth()
+    Safe.CaptureQuadrant("N")
+end
+
+function AztarecHelper_MarkEast()
+    Safe.CaptureQuadrant("E")
+end
+
+function AztarecHelper_MarkSouth()
+    Safe.CaptureQuadrant("S")
+end
+
+function AztarecHelper_MarkWest()
+    Safe.CaptureQuadrant("W")
 end
 
 function Safe.Reset()
-    Safe.StopSampler()
+    stopTicker()
     Safe.StopReplay()
     wipe(seq)
-    wipe(samples)
-    wipe(manualWin)
-    wipe(shaky)
     chanUnit = nil
     capturing = false
     winIdx = 0
@@ -358,10 +271,6 @@ function Safe.Reset()
     if AZT.SetSafeQuads then
         AZT.SetSafeQuads(seq)
     end
-end
-
-function Safe.IsShaky(i)
-    return shaky[i]
 end
 
 function Safe.IsArmed()
@@ -377,26 +286,25 @@ function Safe.Review()
         AZT.chat("nothing recorded yet - pull the boss once first")
         return
     end
-    local parts, doubts = {}, 0
+    local parts, missed = {}, 0
     for i, q in ipairs(lastPull.seq) do
-        if lastPull.shaky[i] then
-            parts[i] = q .. "?"
-            doubts = doubts + 1
-        else
-            parts[i] = q
+        parts[i] = AZT.QuadName(q, 14)
+        if q == "?" then
+            missed = missed + 1
         end
     end
     AZT.chat("last pull: " .. table.concat(parts, "  >  "))
-    if doubts > 0 then
-        AZT.chat("? = recorded while you were crossing quadrants, trust those less")
+    if missed > 0 then
+        AZT.chat(("? = a wave you never answered, %d of them this pull"):format(missed))
     end
     local d = lastPull.death
     if not d then
         return
     end
-    if d.phase == "echo" and d.safe then
-        local stood = d.stood and (", you were " .. d.stood) or ""
-        AZT.chat(("you died in echo %d - safe was %s%s"):format(d.wave, d.safe, stood))
+    if d.phase == "echo" and d.safe == "?" then
+        AZT.chat(("you died in echo %d, the one wave you never answered"):format(d.wave))
+    elseif d.phase == "echo" and d.safe then
+        AZT.chat(("you died in echo %d - safe was %s"):format(d.wave, AZT.QuadName(d.safe, 14)))
     elseif d.phase == "wave" then
         AZT.chat(("you died during wave %d of the channel"):format(d.wave))
     else
@@ -418,7 +326,7 @@ function Safe.StopReplay()
     replayTicker = nil
     setWave(nil, 0, nil, nil)
     if AZT.SetSafeQuads then
-        AZT.SetSafeQuads(seq, nil, shaky)
+        AZT.SetSafeQuads(seq)
     end
 end
 
@@ -440,7 +348,7 @@ function Safe.Replay()
         return
     end
     local g = lastPull.grid or grid
-    local list, marks = lastPull.seq, lastPull.shaky
+    local list = lastPull.seq
     local startT = GetTime() + REPLAY_LEAD
     local shown = 0
     if AZT.EnsureRoomView then
@@ -464,10 +372,10 @@ function Safe.Replay()
             shown = due
             setWave("replay", due, #list, startT + due * g.spacing)
             if AZT.SetSafeQuads then
-                AZT.SetSafeQuads(list, due, marks)
+                AZT.SetSafeQuads(list, due)
             end
             if AZT.Cue then
-                AZT.Cue(list[due], startT + due * g.spacing)
+                AZT.Cue(list[due], startT + due * g.spacing, due > 1 and list[due - 1] or list[#list])
             end
         end
     end)
@@ -523,18 +431,15 @@ ef:SetScript("OnEvent", function(_, event, ...)
             end
         elseif event == "ENCOUNTER_END" then
             armed = false
-            Safe.StopSampler()
             ef:UnregisterEvent("PLAYER_DEAD")
-            setWave(nil, 0, nil, nil)
-            -- drop the live call so the arrow stops pointing. The recorded
-            -- route stays on the room view
-            if AZT.SetSafeQuads then
-                AZT.SetSafeQuads(seq, nil, shaky)
-            end
+            -- the pull is over, wipe or kill, so clear the board rather than
+            -- leave a dead run up. Review and replay keep their own copy,
+            -- taken before this fires
+            Safe.Reset()
         elseif event == "PLAYER_DEAD" then
             snapshotPull()
             if lastPull then
-                local d = { stood = Safe.CurrentQuadrant() }
+                local d = {}
                 if capturing then
                     d.phase, d.wave = "wave", math.max(winIdx, 1)
                 elseif echoIdx > 0 then
@@ -561,15 +466,11 @@ ef:SetScript("OnEvent", function(_, event, ...)
                 end
                 return
             end
-            if AztarecHelperDB.manualMode then
-                beginManualCapture(unit)
-            else
-                beginAutoCapture(unit)
-            end
+            beginCapture(unit)
         elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" then
             local unit = ...
             if armed and hostileUnit(unit) and (not chanUnit or unit == chanUnit) then
-                finishAutoCapture()
+                finishCapture()
             end
         elseif event == "UNIT_SPELLCAST_START" then
             if not armed then
@@ -591,6 +492,7 @@ ef:SetScript("OnEvent", function(_, event, ...)
             if nowT - lastEchoAdvance < 1 then
                 return
             end
+            local gap = lastEchoAdvance > 0 and (nowT - lastEchoAdvance) or nil
             lastEchoAdvance = nowT
             echoIdx = echoIdx + 1
             -- Reading the boss cast bar is the honest countdown source: each echo is
@@ -610,12 +512,12 @@ ef:SetScript("OnEvent", function(_, event, ...)
                     at = t
                 end
             end
-            setWave("echo", echoIdx, #seq, at)
+            setWave("echo", echoIdx, #seq, at, nowT, gap)
             if AZT.SetSafeQuads then
-                AZT.SetSafeQuads(seq, echoIdx, shaky)
+                AZT.SetSafeQuads(seq, echoIdx)
             end
             if AZT.Cue then
-                AZT.Cue(seq[echoIdx], at)
+                AZT.Cue(seq[echoIdx], at, echoIdx > 1 and seq[echoIdx - 1] or seq[#seq])
             end
             if echoIdx >= #seq then
                 -- clear the radar just after the last wave actually lands:

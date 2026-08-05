@@ -5,32 +5,40 @@
 
 local _, AZT = ...
 
--- The safe-spot arrow. Points from where you stand to the called safe
--- quadrant. Red on the way in, green once you stand right (then it aims
--- ahead at the next call), grey around the delve out of combat so it can
--- be dragged into place. In combat it only exists while the memory game
--- runs.
+-- The safe-spot arrow. Walks the recorded route through the echoes, showing
+-- the move out of the quarter the last wave left you in. One colour the
+-- whole way, the player's pick, since the encounter hides the moment a wave
+-- lands and a colour that changes on a guess is worse than one that does
+-- not change at all. It parks dimmed around the delve out of combat so it
+-- can be dragged into place. In combat it only exists while the memory
+-- game runs.
 
 local arrowFrame
-local QUAD_RAD = { N = 0, E = math.rad(90), S = math.rad(180), W = math.rad(270) }
-local REACH = AZT.ROOM.radius * 0.6 -- aim point: the quarter's center of area
 
-local function bearing(facing, dx, dy)
-    return -(facing + math.atan2(dx, dy))
-end
+-- relative directions assume you look at the boss from your quarter, same
+-- vocabulary as the spoken cues. Up is through him, down is stay put.
+local TURN_RAD = { stay = math.pi, forward = 0, left = math.pi / 2, right = -math.pi / 2 }
 
-local function readFacing()
-    local ok, facing = pcall(GetPlayerFacing)
-    if ok and type(facing) == "number" then
-        return facing
-    end
+-- no rgb means the art draws as it was painted, which is gold
+AZT.ARROW_COLORS = {
+    gold = { label = "Gold", rgb = nil },
+    red = { label = "Red", rgb = { 0.95, 0.3, 0.25 } },
+    green = { label = "Green", rgb = { 0.3, 0.95, 0.4 } },
+    white = { label = "White", rgb = { 1, 1, 1 } },
+    cyan = { label = "Cyan", rgb = { 0.35, 0.85, 1 } },
+    violet = { label = "Violet", rgb = { 0.78, 0.55, 1 } },
+}
+AZT.ARROW_ORDER = { "gold", "red", "green", "white", "cyan", "violet" }
+
+function AZT.ArrowColor()
+    return AZT.ARROW_COLORS[AztarecHelperDB.arrowColor or "gold"] or AZT.ARROW_COLORS.gold
 end
 
 local TURN_SMOOTH = 0.18 -- fraction of the remaining turn applied per tick
-local SAFE_HOLD = 1.5 -- ride out unreadable-position blips this long before blanking
+local SAFE_HOLD = 1.5 -- an echo overdue by this long means the run stopped, so stop pointing
 local UPDATE_HZ = 20 -- pointer refresh rate
 local PARK_ALPHA = 0.8 -- parked brightness
-local NEAR_YD = 9 -- the distance label brightens inside this range
+local LABEL_LIFT = 9 -- the caption sits this many px above the frame bottom
 local TURN_SNAP = 1.8 -- turns bigger than this many radians snap instead of easing
 
 local function buildArrow()
@@ -48,23 +56,18 @@ local function buildArrow()
     tex:Hide()
 
     local label = arrowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetPoint("BOTTOM")
+    label:SetPoint("BOTTOM", 0, LABEL_LIFT)
     arrowFrame.label = label
     AZT.AttachLock(arrowFrame, "arrow")
     arrowFrame:Hide()
 
-    -- color multiplied onto the desaturated art per state. No entry means no
-    -- tint and the art shows gold as drawn.
-    local TINT = {
-        idle = { 0.6, 0.6, 0.6 },
-        safe = { 0.3, 0.95, 0.4 },
-        go = { 0.95, 0.3, 0.25 },
-    }
-    local lastRot, lastAlpha, lastTint
-    local function showPointer(rot, alpha, tint)
-        -- same arrow as last tick, nothing to redraw. Mostly earns its keep
-        -- in the safe state, where the arrow can sit unchanged for seconds.
-        if rot == lastRot and alpha == lastAlpha and tint == lastTint and tex:IsShown() then
+    -- the colour multiplies onto the desaturated art. Passing none leaves the
+    -- art alone, which is how gold stays gold.
+    local lastRot, lastAlpha, lastRGB
+    local function showPointer(rot, alpha, rgb)
+        -- same arrow as last tick, nothing to redraw. It earns its keep
+        -- between echoes, where the arrow sits unchanged for seconds.
+        if rot == lastRot and alpha == lastAlpha and rgb == lastRGB and tex:IsShown() then
             return
         end
         if not pcall(tex.SetRotation, tex, rot) then
@@ -72,11 +75,10 @@ local function buildArrow()
             lastRot = nil
             return
         end
-        lastRot, lastAlpha, lastTint = rot, alpha, tint
-        tex:SetDesaturated(tint and true or false)
-        local c = tint and TINT[tint]
-        if c then
-            tex:SetVertexColor(c[1], c[2], c[3], alpha)
+        lastRot, lastAlpha, lastRGB = rot, alpha, rgb
+        tex:SetDesaturated(rgb and true or false)
+        if rgb then
+            tex:SetVertexColor(rgb[1], rgb[2], rgb[3], alpha)
         else
             tex:SetVertexColor(1, 1, 1, alpha)
         end
@@ -89,10 +91,9 @@ local function buildArrow()
     arrowFrame.showPointer = showPointer
 
     local shownRot = 0
-    local lastReadAt = 0
 
-    -- ease toward a new bearing so small corrections glide, but snap through
-    -- big ones since an eased about-face reads as lag
+    -- ease toward a new direction so 90 degree corrections glide, but snap
+    -- through about-faces since an eased 180 reads as lag
     local function easeTo(rot)
         local delta = (rot - shownRot + math.pi) % (2 * math.pi) - math.pi
         if math.abs(delta) > TURN_SNAP then
@@ -103,24 +104,6 @@ local function buildArrow()
         return shownRot
     end
 
-    -- bearing and distance from the player to the quadrant's center of area,
-    -- which for a quarter slice sits about six tenths of the way out along
-    -- its middle line. Facing can go secret in combat if Blizzard nerfs
-    -- this, then rot comes back nil and the name and distance still help.
-    local function aim(quad, x, y, facing)
-        local rad = QUAD_RAD[quad] or 0
-        local dx, dy = math.sin(rad) * REACH - x, math.cos(rad) * REACH - y
-        local dist = math.sqrt(dx * dx + dy * dy)
-        if facing == nil then
-            return nil, dist
-        end
-        local okR, rot = pcall(bearing, facing, dx, dy)
-        if okR and type(rot) == "number" then
-            return rot, dist
-        end
-        return nil, dist
-    end
-
     local elapsed = 0
     arrowFrame:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + dt
@@ -128,53 +111,39 @@ local function buildArrow()
             return
         end
         elapsed = 0
-        local safeNow, nextNow = AZT.safeNow, AZT.nextNow
+        local safeNow = AZT.safeNow
         if not safeNow then
             return -- parked, ArrowSync painted the waiting state already
         end
-        local q, x, y = AZT.Safe.CurrentQuadrant()
-        if not x then
-            -- position reads drop out for a moment now and then, so the last
-            -- verdict stays up briefly
-            if GetTime() - lastReadAt > SAFE_HOLD then
-                hidePointer()
-                label:SetText(safeNow)
-                label:SetTextColor(1, 1, 1)
-            end
+        local w = AZT.Wave
+        local list = AZT.safeList
+        local blank = not (w and (w.phase == "echo" or w.phase == "replay") and w.idx > 0 and list)
+        -- an echo this far overdue means the run stopped, so stop pointing
+        -- instead of holding a call nothing is coming for
+        if not blank and w.gap and w.startedAt then
+            local okG, since = pcall(function()
+                return GetTime() - w.startedAt
+            end)
+            blank = okG and type(since) == "number" and since > w.gap + SAFE_HOLD
+        end
+        if blank then
+            hidePointer()
+            label:SetText(AZT.QuadName(safeNow, 18))
+            label:SetTextColor(1, 1, 1)
             return
         end
-        lastReadAt = GetTime()
-
-        if q == safeNow then
-            -- standing right: green, pointing ahead at the next quarter so
-            -- the move can start the moment the wave resolves. With no next
-            -- call it points straight down because you are the destination.
-            label:SetTextColor(0.4, 1, 0.5)
-            label:SetText(AZT.stayText)
-            local rot
-            if nextNow and nextNow ~= safeNow then
-                rot = aim(nextNow, x, y, readFacing())
-            end
-            if rot then
-                showPointer(easeTo(rot), 1, "safe")
-            else
-                shownRot = math.pi
-                showPointer(math.pi, 1, "safe")
-            end
-            return
-        end
-
-        -- standing wrong: red, pointing at the safe quarter
-        local rot, dist = aim(safeNow, x, y, readFacing())
-        label:SetText(("%s  %.0f yd"):format(safeNow, dist))
-        if dist < NEAR_YD then
-            label:SetTextColor(1, 0.6, 0.5)
-        else
-            label:SetTextColor(0.95, 0.4, 0.35)
-        end
+        -- the move out of the quarter the last wave left you in. It trusts
+        -- the recording, so a player who fell behind gets pointed from where
+        -- they should be standing.
+        local prevQ = w.idx > 1 and list[w.idx - 1] or list[#list]
+        local turn = AZT.Safe.TurnFromTo(prevQ, safeNow)
+        local rot = turn and TURN_RAD[turn]
+        label:SetText(AZT.QuadName(safeNow, 18))
+        label:SetTextColor(1, 1, 1)
         if rot then
-            showPointer(easeTo(rot), 1, "go")
+            showPointer(easeTo(rot), 1, AZT.ArrowColor().rgb)
         else
+            -- an unknown step in the route, nothing honest to point at
             hidePointer()
         end
     end)
@@ -197,7 +166,9 @@ function AZT.ArrowSync()
     end
     arrowFrame:SetShown(on and true or false)
     if on and not live then
-        arrowFrame.showPointer(0, PARK_ALPHA, "idle")
+        -- the colour you picked, dimmed. Parking it in grey would hide the
+        -- one thing you are looking at while choosing one.
+        arrowFrame.showPointer(0, PARK_ALPHA, AZT.ArrowColor().rgb)
         -- the caption helps placement and goes away mid-fight
         arrowFrame.label:SetText(fighting and "" or "safe-spot arrow")
         arrowFrame.label:SetTextColor(1, 1, 1, 0.5)

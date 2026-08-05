@@ -35,6 +35,7 @@
         "StaticPopupDialogs",
         "DELETE_ITEM_CONFIRM_STRING",
         "ChatFontNormal",
-        "CreateVector2D"
+        "CreateVector2D",
+        "UISpecialFrames"
     ]
 }

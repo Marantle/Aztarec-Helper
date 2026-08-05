@@ -6,8 +6,9 @@
 local _, AZT = ...
 
 -- Spoken direction calls for the echoes. The boss stands in the room centre
--- and the player is looking at him, so from any quarter the safe one is
--- ahead, left, right or the one they are already in. No facing read needed.
+-- and the player is looking at him from the quarter the previous wave put
+-- them in, so the safe one is ahead, left, right or the one they are already
+-- in. The turn comes from the recorded route, nothing reads the player.
 
 local MEDIA = "Interface\\AddOns\\AztarecHelper\\Media\\"
 local SOUNDS = {
@@ -17,7 +18,21 @@ local SOUNDS = {
     stay = MEDIA .. "stay.mp3",
 }
 
-local CHANNELS = { "Master", "SFX", "Music", "Ambience", "Dialog", "Talking Head" }
+-- the five channels PlaySoundFile actually accepts, each with the game's own
+-- volume CVar behind it so the addon's slider and the sound options move the
+-- same number
+local CHANNELS = { "Master", "SFX", "Music", "Ambience", "Dialog" }
+local VOL_CVAR = {
+    Master = "Sound_MasterVolume",
+    SFX = "Sound_SFXVolume",
+    Music = "Sound_MusicVolume",
+    Ambience = "Sound_AmbienceVolume",
+    Dialog = "Sound_DialogVolume",
+}
+
+function AZT.CueChannelCVar()
+    return VOL_CVAR[AztarecHelperDB.cueChannel or "Master"]
+end
 
 local warned = false
 
@@ -45,20 +60,20 @@ end
 
 local CUE_LEAD = 0.5 -- how long before the wave lands the word plays
 
-local function speak(safeQuad)
-    -- no position read means silence, never a wrong call
-    local turn = AZT.Safe.TurnFromTo(AZT.Safe.CurrentQuadrant(), safeQuad)
+local function speak(safeQuad, fromQuad)
+    -- an unknown step in the route means silence, never a wrong call
+    local turn = AZT.Safe.TurnFromTo(fromQuad, safeQuad)
     if not turn then
         return
     end
     AZT.PlayCue(turn)
 end
 
--- called at cast start with the wave's landing time. The word waits until
--- CUE_LEAD before the hit, so it arrives when moving is due and reads the
--- player's quarter where they stand by then. With no readable landing time
--- it speaks at once rather than never.
-function AZT.Cue(safeQuad, hitAt)
+-- called at cast start with the wave's landing time and the quarter the
+-- previous wave left the player in. The word waits until CUE_LEAD before the
+-- hit, so it arrives when moving is due. With no readable landing time it
+-- speaks at once rather than never.
+function AZT.Cue(safeQuad, hitAt, fromQuad)
     if not AztarecHelperDB.cues then
         return
     end
@@ -70,13 +85,13 @@ function AZT.Cue(safeQuad, hitAt)
         delay = d
     end
     if not delay then
-        speak(safeQuad)
+        speak(safeQuad, fromQuad)
         return
     end
     C_Timer.NewTimer(delay, function()
         -- a reset or a stopped replay clears the wave, stay quiet then
         if AZT.Wave.at == hitAt then
-            speak(safeQuad)
+            speak(safeQuad, fromQuad)
         end
     end)
 end

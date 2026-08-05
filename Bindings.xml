@@ -1,5 +1,14 @@
 <Bindings>
-    <Binding name="AZTARECHELPER_CAPTURE" category="ADDONS">
-        AztarecHelper_Capture()
+    <Binding name="AZTARECHELPER_MARK_NORTH" category="ADDONS">
+        AztarecHelper_MarkNorth()
+    </Binding>
+    <Binding name="AZTARECHELPER_MARK_EAST" category="ADDONS">
+        AztarecHelper_MarkEast()
+    </Binding>
+    <Binding name="AZTARECHELPER_MARK_SOUTH" category="ADDONS">
+        AztarecHelper_MarkSouth()
+    </Binding>
+    <Binding name="AZTARECHELPER_MARK_WEST" category="ADDONS">
+        AztarecHelper_MarkWest()
     </Binding>
 </Bindings>

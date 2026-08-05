@@ -40,7 +40,7 @@ local function buildWave()
         end
         local msg
         if w.phase == "record" then
-            msg = ("recording wave %d"):format(w.idx)
+            msg = ("input wave %d"):format(w.idx)
         elseif w.total then
             msg = ("wave %d of %d"):format(w.idx, w.total)
         else
@@ -58,15 +58,14 @@ local function buildWave()
         if remain then
             msg = msg .. (" - %.1f"):format(remain)
         end
-        local rC, gC, bC = 1, 1, 1
-        local safeNow = AZT.safeNow
-        if w.phase ~= "record" and AztarecHelperDB.moveWarn and safeNow then
-            local quadNow = AZT.Safe and AZT.Safe.CurrentQuadrant()
-            if quadNow == safeNow then
-                rC, gC, bC = 0.4, 1, 0.5
-            elseif quadNow then
-                msg = "MOVE  " .. msg
-                rC, gC, bC = 1, 0.25, 0.2
+        -- during the echoes the box leads with where to be and trails with
+        -- where next, in whatever the player picked for those quarters. The
+        -- next one is smaller since it is not the one being counted down.
+        local safeNow, nextNow = AZT.safeNow, AZT.nextNow
+        if w.phase ~= "record" and safeNow then
+            msg = AZT.QuadName(safeNow, 20) .. "  " .. msg
+            if nextNow then
+                msg = msg .. "  >  " .. AZT.QuadName(nextNow, 16)
             end
         end
         local alpha = 1
@@ -74,14 +73,18 @@ local function buildWave()
             alpha = 0.55 + 0.45 * math.abs(math.sin(GetTime() * FLASH_HZ * math.pi))
         end
         text:SetText(msg)
-        text:SetTextColor(rC, gC, bC, alpha)
+        text:SetTextColor(1, 1, 1, alpha)
     end)
 end
 
--- shows while there is wave state to render and hides the moment it clears
+-- Same visibility as the arrow: parked around the delve out of combat so it
+-- can be dragged into place, live while the memory game runs, and out of the
+-- way in combat when it has nothing to say.
 function AZT.WaveSync()
     local live = AZT.Wave and AZT.Wave.phase ~= nil
-    local on = AztarecHelperDB.waveText and (live or AZT.placeMode)
+    local fighting = AZT.inCombat or InCombatLockdown() or (AZT.Safe and AZT.Safe.IsArmed and AZT.Safe.IsArmed())
+    local idleParked = AZT.InDelve() and not fighting
+    local on = AztarecHelperDB.waveText and (live or idleParked or AZT.placeMode)
     if not waveFrame then
         if not on then
             return
@@ -90,14 +93,9 @@ function AZT.WaveSync()
     end
     waveFrame:SetShown(on and true or false)
     if on and not live then
-        -- placement sample in the widest state the current settings allow,
-        -- so the chosen spot fits the real thing under pressure
-        if AztarecHelperDB.moveWarn then
-            waveFrame.text:SetText("MOVE  wave 2 of 5 - 1.8")
-            waveFrame.text:SetTextColor(1, 0.25, 0.2, 1)
-        else
-            waveFrame.text:SetText("wave 2 of 5 - 1.8")
-            waveFrame.text:SetTextColor(1, 1, 1, 1)
-        end
+        -- named while it is only sitting there, and a sample countdown while
+        -- placing so the window is the width it will really be
+        waveFrame.text:SetText(AZT.placeMode and "N  wave 2 of 5 - 1.8  >  E" or "wave countdown")
+        waveFrame.text:SetTextColor(1, 1, 1, 0.5)
     end
 end
