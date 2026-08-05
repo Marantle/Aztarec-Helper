@@ -5,6 +5,7 @@
 ## Author: Rothirr
 ## X-License: All Rights Reserved
 ## X-Curse-Project-ID: 1613242
+## X-Wago-ID: rNky1mKa
 ## IconTexture: Interface\AddOns\AztarecHelper\Media\addonlogo
 ## AddonCompartmentFunc: AztarecHelper_OnCompartment
 ## SavedVariables: AztarecHelperDB

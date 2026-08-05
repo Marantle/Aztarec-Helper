@@ -3,7 +3,7 @@ Copyright (c) 2026 Rothirr. All rights reserved.
 
 You may download and install this addon for your own use in World of
 Warcraft, from the official distribution points only (the author's CurseForge
-project and this repository).
+and Wago projects and this repository).
 
 Everything else requires my written permission first. In particular you may
 not:

@@ -1,0 +1,67 @@
+name: Release
+
+# Publishing a GitHub release uploads the addon to CurseForge and Wago and
+# attaches the zip to the release. The tag must be v<x.y.z> and match
+# ## Version: in the .toc exactly, suffix included, so a beta tag means
+# bumping the .toc to something like 1.3.0-beta.1 first.
+#
+# The release type comes from the version: a tag containing "-alpha" uploads
+# as alpha and "-beta" as beta (so does ticking GitHub's pre-release box on a
+# plain tag). Anything else uploads as release, which Wago calls stable.
+# Needs the CURSEFORGE_TOKEN and WAGO_API_TOKEN repository secrets.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+      WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Read the version from the tag
+        id: target
+        run: |
+          TAG='${{ github.event.release.tag_name }}'
+          case "$TAG" in
+            v*) echo "version=${TAG#v}" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Tag '$TAG' does not look like v<x.y.z>."; exit 1 ;;
+          esac
+      - name: Pick the release type
+        run: |
+          case '${{ github.event.release.tag_name }}' in
+            *-alpha*) TYPE=alpha ;;
+            *-beta*) TYPE=beta ;;
+            *) TYPE=${{ github.event.release.prerelease && 'beta' || 'release' }} ;;
+          esac
+          echo "RELEASE_TYPE=$TYPE" >> "$GITHUB_ENV"
+      - name: Check the tag against the .toc and the code
+        run: |
+          TOC_VERSION=$(grep '^## Version:' AztarecHelper.toc | awk '{print $3}' | tr -d '\r')
+          CODE_VERSION=$(grep '^AZT.VERSION' Core/AztarecHelper.lua | awk -F'"' '{print $2}')
+          if [ "$TOC_VERSION" != '${{ steps.target.outputs.version }}' ]; then
+            echo "The tag says ${{ steps.target.outputs.version }} but the .toc says $TOC_VERSION."
+            echo "Bump the .toc (and the matching AZT.VERSION) before tagging, or fix the tag."
+            exit 1
+          fi
+          if [ "$CODE_VERSION" != "$TOC_VERSION" ]; then
+            echo "The .toc says $TOC_VERSION but AZT.VERSION says $CODE_VERSION."
+            exit 1
+          fi
+      - name: Build and upload to CurseForge
+        run: make release
+      - name: Upload to Wago
+        run: make release-wago
+      - name: Attach the zip to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload '${{ github.event.release.tag_name }}' "AztarecHelper-${{ steps.target.outputs.version }}.zip"
