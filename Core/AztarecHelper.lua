@@ -5,7 +5,7 @@
 
 local ADDON, AZT = ...
 
-AZT.VERSION = "1.1.1"
+AZT.VERSION = "1.2.1"
 
 -- Venomfall Deeps boss room, measured on PTR 12.1.0.
 -- UnitPosition returns (a, b, z, inst). The addon prints them as world=b,a.
@@ -37,6 +37,8 @@ local DEFAULTS = {
     waveText = true, -- floating wave countdown window
     moveWarn = true, -- turn the countdown red while you stand in a doomed quadrant
     arrow = true, -- quest-style arrow pointing at the called safe quadrant
+    cues = true, -- spoken direction calls during the echoes
+    cueChannel = "Master", -- sound channel the calls play through
     log = {}, -- persisted log lines (survive /reload and crashes)
 }
 
@@ -101,6 +103,7 @@ local HELP = {
     "/azt cap           - capture current quadrant as the next safe spot (bind a key!)",
     "/azt manual        - record spots with the capture key only, no auto sampling",
     "/azt replay        - practice: replay the last recorded route with real timings",
+    "/azt cue           - toggle the spoken direction calls during the echoes (beta)",
     "/azt review        - what the last pull recorded and where you died",
     "/azt reset         - clear the captured safe-spot sequence",
     "/azt place         - show the countdown and arrow anywhere, to drag into place",
@@ -135,6 +138,9 @@ SlashCmdList["AZT"] = function(msg)
         )
     elseif cmd == "replay" then
         AZT.Safe.Replay()
+    elseif cmd == "cue" then
+        AztarecHelperDB.cues = not AztarecHelperDB.cues
+        chat("direction cues: " .. (AztarecHelperDB.cues and "ON" or "OFF"))
     elseif cmd == "review" then
         AZT.Safe.Review()
     elseif cmd == "reset" then

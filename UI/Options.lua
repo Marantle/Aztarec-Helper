@@ -119,6 +119,56 @@ addCheck(
 )
 
 addCheck(
+    "Direction cues (beta)",
+    "Plays a short call for each wave, forward, left, right or stay."
+        .. " The calls assume you are facing the boss in the middle of the room.",
+    function()
+        return AztarecHelperDB.cues
+    end,
+    function(v)
+        AztarecHelperDB.cues = v
+    end
+)
+
+-- audition row, so the cue sounds can be judged without a pull
+local cueX = 26
+for _, dir in ipairs({ "forward", "left", "right", "stay" }) do
+    local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    btn:SetSize(74, 22)
+    btn:SetPoint("TOPLEFT", cueX, y)
+    btn:SetText(dir:sub(1, 1):upper() .. dir:sub(2))
+    btn:SetScript("OnClick", function()
+        AZT.PlayCue(dir)
+    end)
+    cueX = cueX + 78
+end
+y = y - 28
+
+local cueChanBtn
+cueChanBtn = addAction("", function()
+    cueChanBtn:SetText("Cues: " .. AZT.CycleCueChannel())
+end)
+cueChanBtn:SetScript("OnEnter", function(btn)
+    GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
+    GameTooltip:SetText(
+        "The sound channel the calls play through. That channel's volume slider decides how loud they are."
+            .. " Master stays audible even with effects turned down.",
+        1,
+        1,
+        1,
+        1,
+        true
+    )
+    GameTooltip:Show()
+end)
+cueChanBtn:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
+refreshers[#refreshers + 1] = function()
+    cueChanBtn:SetText("Cues: " .. (AztarecHelperDB.cueChannel or "Master"))
+end
+
+addCheck(
     "Lock the arrow",
     "No dragging, and clicks pass through it. Hover its corner and click the padlock to unlock, or untick this.",
     function()

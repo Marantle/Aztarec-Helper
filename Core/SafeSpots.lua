@@ -104,6 +104,22 @@ function Safe.QuadrantFromXY(x, y)
     return QUADRANTS[math.floor(((ang + 45) % 360) / 90) + 1]
 end
 
+local QUAD_INDEX = {}
+for i, q in ipairs(QUADRANTS) do
+    QUAD_INDEX[q] = i
+end
+local TURNS = { [0] = "stay", "left", "forward", "right" }
+
+-- Where the safe quarter is from the player's view, assuming they are looking
+-- at the boss in the middle. The far quarter is straight through him.
+function Safe.TurnFromTo(from, to)
+    local a, b = QUAD_INDEX[from], QUAD_INDEX[to]
+    if not a or not b then
+        return nil
+    end
+    return TURNS[(b - a) % 4]
+end
+
 -- Which quadrant the player stands in, relative to the room center.
 function Safe.CurrentQuadrant()
     local ok, a, b = pcall(UnitPosition, "player")
@@ -450,6 +466,9 @@ function Safe.Replay()
             if AZT.SetSafeQuads then
                 AZT.SetSafeQuads(list, due, marks)
             end
+            if AZT.Cue then
+                AZT.Cue(list[due], startT + due * g.spacing)
+            end
         end
     end)
 end
@@ -594,6 +613,9 @@ ef:SetScript("OnEvent", function(_, event, ...)
             setWave("echo", echoIdx, #seq, at)
             if AZT.SetSafeQuads then
                 AZT.SetSafeQuads(seq, echoIdx, shaky)
+            end
+            if AZT.Cue then
+                AZT.Cue(seq[echoIdx], at)
             end
             if echoIdx >= #seq then
                 -- clear the radar just after the last wave actually lands:

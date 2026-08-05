@@ -50,6 +50,7 @@ read_globals = {
     "wipe",
     "date",
     "PlaySound",
+    "PlaySoundFile",
     "SOUNDKIT",
     -- Group
     "IsInGroup",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+- Direction cues, in beta for now: half a second before each echo wave lands the addon speaks where the safe quarter is from where you stand, forward, left, right or stay. The calls assume you are looking at the boss in the middle of the room. The options panel has the toggle (also `/azt cue`), test buttons for the four sounds and a choice of which sound channel they play through
+- `/azt replay` speaks the calls too, so you can hear them between pulls while walking the route
+
 ## 1.1.1
 - The arrow now shows your state by color: red while you still need to move, green once you stand in the safe quarter. While you are safe it points ahead at the next quarter so you can start the move early, and points down at you when there is nothing left to pre-move for
 - Smaller download: the textures are compressed now and the addon list icon is sized to what the game actually draws
