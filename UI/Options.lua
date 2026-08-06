@@ -83,8 +83,8 @@ end)
 
 addCheck(
     "Safe-spot arrow",
-    "An arrow that shows the move for each echo, red while the move is due and green"
-        .. " pointing ahead once the wave is about to land."
+    "An arrow that shows the move for each echo, as if you were facing the boss in the middle,"
+        .. " so up means straight through him and down means stay where you are."
         .. " It sits dimmed in the delve before the pull so you can drag it into place.",
     function()
         return AztarecHelperDB.arrow
@@ -111,6 +111,20 @@ end, "The color the arrow draws in during the echoes. Gold leaves the artwork as
 refreshers[#refreshers + 1] = function()
     colorBtn:SetText("Arrow: " .. AZT.ArrowColor().label)
 end
+
+addCheck(
+    "Compass arrow",
+    "Off, the arrow shows the move to make as if you were facing the boss, and the voice calls the"
+        .. " same move. On, it points the way the board points and carries that quarter's mark inside it,"
+        .. " and the calls stay quiet since forward and left mean nothing in that reading.",
+    function()
+        return AztarecHelperDB.arrowCompass
+    end,
+    function(v)
+        AztarecHelperDB.arrowCompass = v
+        AZT.ArrowSync()
+    end
+)
 
 addCheck(
     "Slim room view",

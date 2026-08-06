@@ -3,6 +3,7 @@
 ## 1.3.3
 - The quarters now by default select markers. triangle north, square east, cross south, circle west, which is `/wm 2`, `/wm 1`, `/wm 4` and `/wm 6` for the matching flares
 - Click a marker out of combat to change it or put the letter back
+- Compass arrow in the settings, for anyone who does not keep the boss in front of them. The arrow points the way the board points and carries that quarter's mark below it, so the arrow tells you now the compass direction to in to. The spoken calls stay quiet in that mode, since forward and left only mean something in the old relative mode
 - The map art behind the room view starts off now
 - The room view says "keybinds not set" while any of the four section keys is still unbound
 - Slim room view in the settings cuts the window down to the room itself, dropping the title, the Instructions button and the compass letters

@@ -36,6 +36,7 @@ local DEFAULTS = {
     waveText = true, -- floating wave countdown window
     arrow = true, -- quest-style arrow showing the move for each echo
     arrowColor = "gold", -- key into AZT.ARROW_COLORS
+    arrowCompass = false, -- arrow points the way the board does, no spoken calls
     cues = true, -- spoken direction calls during the echoes
     cueChannel = "Master", -- sound channel the calls play through
     quadIcons = {}, -- world marker icon per section letter, board display only

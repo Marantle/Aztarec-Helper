@@ -15,9 +15,11 @@ local _, AZT = ...
 
 local arrowFrame
 
--- relative directions assume you look at the boss from your quarter, same
--- vocabulary as the spoken cues. Up is through him, down is stay put.
+-- Two ways to read the arrow, and mixing them is what gives people mixed
+-- signals. Relative assumes you look at the boss from your quarter, 
+-- Compass drops that assumption and points the way the room view does
 local TURN_RAD = { stay = math.pi, forward = 0, left = math.pi / 2, right = -math.pi / 2 }
+local QUAD_ROT = { N = 0, E = -math.pi / 2, S = math.pi, W = math.pi / 2 }
 
 -- no rgb means the art draws as it was painted, which is gold
 AZT.ARROW_COLORS = {
@@ -40,10 +42,11 @@ local UPDATE_HZ = 20 -- pointer refresh rate
 local PARK_ALPHA = 0.8 -- parked brightness
 local LABEL_LIFT = 9 -- the caption sits this many px above the frame bottom
 local TURN_SNAP = 1.8 -- turns bigger than this many radians snap instead of easing
+local MARK_SIZE = 44 -- the quarter's mark under the arrow
 
 local function buildArrow()
     arrowFrame = CreateFrame("Frame", "AztarecHelperArrow", UIParent)
-    arrowFrame:SetSize(96, 124)
+    arrowFrame:SetSize(96, 142)
     AZT.MakeMovable(arrowFrame, "arrowPos", "TOP", 0, -100)
 
     -- our own arrow art. Blizzard's guide arrow blp turned out to carry
@@ -58,6 +61,13 @@ local function buildArrow()
     local label = arrowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("BOTTOM", 0, LABEL_LIFT)
     arrowFrame.label = label
+
+    -- the quarter's mark sits under the arrow
+    local function setMark(q)
+        label:SetText(q and AZT.QuadName(q, MARK_SIZE) or "")
+        label:SetTextColor(1, 1, 1, 1)
+    end
+    arrowFrame.setMark = setMark
     AZT.AttachLock(arrowFrame, "arrow")
     arrowFrame:Hide()
 
@@ -115,7 +125,7 @@ local function buildArrow()
         if w and w.phase == "record" then
             -- nothing to call during the Sermon, so it points at your feet.
             showPointer(easeTo(math.pi), 1, AZT.ArrowColor().rgb)
-            label:SetText("")
+            setMark(nil)
             return
         end
         local safeNow = AZT.safeNow
@@ -134,18 +144,22 @@ local function buildArrow()
         end
         if blank then
             hidePointer()
-            label:SetText(AZT.QuadName(safeNow, 18))
-            label:SetTextColor(1, 1, 1)
+            setMark(safeNow)
             return
         end
-        -- the move out of the quarter the last wave left you in. It trusts
-        -- the recording, so a player who fell behind gets pointed from where
-        -- they should be standing.
-        local prevQ = w.idx > 1 and list[w.idx - 1] or list[#list]
-        local turn = AZT.Safe.TurnFromTo(prevQ, safeNow)
-        local rot = turn and TURN_RAD[turn]
-        label:SetText(AZT.QuadName(safeNow, 18))
-        label:SetTextColor(1, 1, 1)
+        local compass = AztarecHelperDB.arrowCompass
+        local rot
+        if compass then
+            rot = QUAD_ROT[safeNow]
+        else
+            -- the move out of the quarter the last wave left you in. It
+            -- trusts the recording, so a player who fell behind gets
+            -- pointed from where they should be standing.
+            local prevQ = w.idx > 1 and list[w.idx - 1] or list[#list]
+            local turn = AZT.Safe.TurnFromTo(prevQ, safeNow)
+            rot = turn and TURN_RAD[turn]
+        end
+        setMark(safeNow)
         if rot then
             showPointer(easeTo(rot), 1, AZT.ArrowColor().rgb)
         else
@@ -176,8 +190,10 @@ function AZT.ArrowSync()
         -- the colour you picked, dimmed. Parking it in grey would hide the
         -- one thing you are looking at while choosing one.
         arrowFrame.showPointer(0, PARK_ALPHA, AZT.ArrowColor().rgb)
-        -- the caption helps placement and goes away mid-fight
-        arrowFrame.label:SetText(fighting and "" or "safe-spot arrow")
+        -- the caption helps placement and names the reading you are on
+        arrowFrame.setMark(nil)
+        local mode = AztarecHelperDB.arrowCompass and "compass arrow" or "relative arrow"
+        arrowFrame.label:SetText(fighting and "" or mode)
         arrowFrame.label:SetTextColor(1, 1, 1, 0.5)
     end
 end
