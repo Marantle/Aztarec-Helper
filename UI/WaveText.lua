@@ -42,7 +42,7 @@ local function buildWave()
         end
         local msg
         if w.phase == "record" then
-            msg = ("input wave %d"):format(w.idx)
+            msg = ("answer wave %d"):format(w.idx)
         elseif w.total then
             msg = ("wave %d of %d"):format(w.idx, w.total)
         else
@@ -86,7 +86,7 @@ function AZT.WaveSync()
     local live = AZT.Wave and AZT.Wave.phase ~= nil
     local fighting = AZT.inCombat or InCombatLockdown() or (AZT.Safe and AZT.Safe.IsArmed and AZT.Safe.IsArmed())
     local idleParked = AZT.InDelve() and not fighting
-    local on = AztarecHelperDB.waveText and (live or idleParked or AZT.placeMode)
+    local on = AztarecHelperDB.waveText and (live or idleParked or AZT.previewMode)
     if not waveFrame then
         if not on then
             return
@@ -97,7 +97,7 @@ function AZT.WaveSync()
     if on and not live then
         -- named while it is only sitting there, and a sample countdown while
         -- placing so the window is the width it will really be
-        waveFrame.text:SetText(AZT.placeMode and "N  wave 2 of 5 - 1.8  >  E" or "wave countdown")
+        waveFrame.text:SetText(AZT.previewMode and "N  wave 2 of 5 - 1.8  >  E" or "wave countdown")
         waveFrame.text:SetTextColor(1, 1, 1, 0.5)
     end
 end

@@ -114,9 +114,10 @@ end
 
 addCheck(
     "Compass arrow",
-    "Off, the arrow shows the move to make as if you were facing the boss, and the voice calls the"
-        .. " same move. On, it points the way the board points and carries that quarter's mark inside it,"
-        .. " and the calls stay quiet since forward and left mean nothing in that reading.",
+    "Off is the relative arrow: the move to make as if you were facing the boss, and the voice calls the"
+        .. " same move. On is the compass arrow: it points the way the room view points and carries that"
+        .. " quarter's marker inside it, and the calls stay quiet since forward and left mean nothing"
+        .. " in that reading.",
     function()
         return AztarecHelperDB.arrowCompass
     end,
@@ -128,7 +129,8 @@ addCheck(
 
 addCheck(
     "Slim room view",
-    "Changes the room view to only show map, with excess padding removed. `/azt help` still opens the instructions.",
+    "Cuts the room view down to the room itself, with the excess padding removed."
+        .. " `/azt help` still opens the instructions.",
     function()
         return AztarecHelperDB.roomSlim
     end,
@@ -146,7 +148,7 @@ end, function(v)
 end)
 
 addCheck(
-    "Direction cues (beta)",
+    "Spoken cues (beta)",
     "Plays a short call for each wave, forward, left, right or stay."
         .. " The calls assume you are facing the boss in the middle of the room.",
     function()
@@ -302,14 +304,14 @@ local previewBtn
 previewBtn = addAction(
     "Preview windows",
     function()
-        AZT.SetPlaceMode(not AZT.placeMode)
-        previewBtn:SetText(AZT.placeMode and "Hide preview" or "Preview windows")
+        AZT.SetPreviewMode(not AZT.previewMode)
+        previewBtn:SetText(AZT.previewMode and "Hide preview" or "Preview windows")
     end,
     "Holds the countdown and the arrow on screen out of combat so you can drag them where you want."
         .. " They normally only appear while the boss is doing something."
 )
 refreshers[#refreshers + 1] = function()
-    previewBtn:SetText(AZT.placeMode and "Hide preview" or "Preview windows")
+    previewBtn:SetText(AZT.previewMode and "Hide preview" or "Preview windows")
 end
 
 addAction("Replay last pull", function()
@@ -320,23 +322,24 @@ addAction("Review last pull", function()
     AZT.Safe.Review()
 end)
 
-addAction("Reset sequence", function()
+addAction("Reset route", function()
     AZT.Safe.Reset()
-    AZT.chat("safe-spot sequence cleared")
+    AZT.chat("recorded route cleared")
 end)
 
 addAction("Updates", function()
     AZT.ShowNotice()
 end)
 
--- section key rows in a right hand column, the same click-then-press flow
+-- quarter key rows in a right hand column, the same click-then-press flow
 -- as the game's own Key Bindings screen. These write real bindings, so the
 -- Key Bindings screen shows whatever is set here and the other way round.
+-- The command ids keep their old MARK names, renaming those drops keybinds.
 local BINDS = {
-    { "Mark north safe", "AZTARECHELPER_MARK_NORTH" },
-    { "Mark east safe", "AZTARECHELPER_MARK_EAST" },
-    { "Mark south safe", "AZTARECHELPER_MARK_SOUTH" },
-    { "Mark west safe", "AZTARECHELPER_MARK_WEST" },
+    { "Answer north", "AZTARECHELPER_MARK_NORTH" },
+    { "Answer east", "AZTARECHELPER_MARK_EAST" },
+    { "Answer south", "AZTARECHELPER_MARK_SOUTH" },
+    { "Answer west", "AZTARECHELPER_MARK_WEST" },
 }
 local MODS = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true }
 local listening
@@ -438,7 +441,7 @@ end)
 local by = -50
 local bindHead = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 bindHead:SetPoint("TOPLEFT", 330, by)
-bindHead:SetText("Section keys")
+bindHead:SetText("Quarter keys")
 by = by - 24
 
 local function addBindRow(label, cmd)

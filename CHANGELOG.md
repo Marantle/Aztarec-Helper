@@ -1,9 +1,11 @@
 # Changelog
 
 ## 1.3.4
-- Compass arrow in the settings, for anyone who does not keep the boss in front of them. The arrow points the way the board points and carries that quarter's mark below it, so it tells you the compass direction to run in. The spoken calls stay quiet in that mode, since forward and left only mean something in the old relative mode
-- The quarter's mark under the arrow draws bigger, in both modes
+- Compass arrow in the settings, for anyone who does not keep the boss in front of them. The arrow points the way the room view points and carries that quarter's marker below it, so it tells you the compass direction to run in. The spoken cues stay quiet in that mode, since forward and left only mean something in the old relative mode
+- The quarter's marker under the arrow draws bigger, in both modes
 - The parked arrow before the pull says which reading you are on, relative or compass
+- One name per thing now, everywhere. The window is the room view, not the board or the radar, the slices are quarters, what you record is the route and you answer a wave rather than mark or input it. The keybinds read Answer north and so on, and keys you already bound carry over
+- Direction cues go by spoken cues now, same feature, same `/azt cue`
 
 ## 1.3.3
 - The quarters now by default select markers. triangle north, square east, cross south, circle west, which is `/wm 2`, `/wm 1`, `/wm 4` and `/wm 6` for the matching flares

@@ -5,7 +5,7 @@
 
 local _, AZT = ...
 
--- Spoken direction calls for the echoes. The boss stands in the room centre
+-- Spoken cues for the echoes. The boss stands in the room centre
 -- and the player is looking at him from the quarter the previous wave put
 -- them in, so the safe one is ahead, left, right or the one they are already
 -- in. The turn comes from the recorded route, nothing reads the player.

@@ -15,12 +15,12 @@ local GRID_ROT = math.rad(45) -- the quarter grid sits turned so boundaries hit 
 local view
 
 -- players who drop world marker flags in the room think in those, not in
--- compass letters, so each section label can show a marker icon instead
+-- compass letters, so each quarter label can show a marker icon instead
 local MARKS = { "Star", "Circle", "Diamond", "Triangle", "Moon", "Square", "Cross", "Skull" }
 
 local function labelMenu(owner, qname)
     MenuUtil.CreateContextMenu(owner, function(_, root)
-        root:CreateTitle(qname .. " section shows")
+        root:CreateTitle(qname .. " quarter shows")
         root:CreateButton("Letter " .. qname, function()
             AztarecHelperDB.quadIcons[qname] = nil
             AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
@@ -69,7 +69,7 @@ local function build()
 
     local title = view:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", 0, -8)
-    title:SetText("Azta'rec Helper addon")
+    title:SetText("Azta'rec Helper")
 
     local optBtn = CreateFrame("Button", nil, view, "UIPanelButtonTemplate")
     optBtn:SetSize(74, 18)
@@ -115,7 +115,7 @@ local function build()
         end
     end
 
-    -- map art backdrop: Blizzard's own tiles for uiMap 2634, drawn at radar
+    -- map art backdrop: Blizzard's own tiles for uiMap 2634, drawn at board
     -- scale and aligned via the measured world->map rect in AZT.ROOM. Tiles
     -- outside the canvas are cut by the clip. /azt map toggles them.
     local artTiles = {}
@@ -313,7 +313,7 @@ local function build()
     AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
 
     -- clicking a quarter during the memory game records it, same as its
-    -- section key. The targets only exist while a recording window is open,
+    -- quarter key. The targets only exist while a recording window is open,
     -- so outside the game they steal no clicks from dragging or the icon
     -- menus, and they stay deliberately outside the padlock's reach since
     -- the lock is there to stop accidental drags, not mid-fight input
@@ -396,7 +396,7 @@ local function build()
     AZT.AttachLock(view, "room", labelBtns, -6, -4)
 end
 
--- highlight the captured safe-spot sequence (list of quadrant names).
+-- highlight the recorded route (list of quarter names).
 -- Without activeIdx (capture phase): captured spots green + numbered.
 -- With activeIdx (echo replay): current safe = green, next safe = yellow,
 -- all other quadrants = red danger. Empty/nil list restores neutral.

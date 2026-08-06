@@ -36,10 +36,10 @@ local DEFAULTS = {
     waveText = true, -- floating wave countdown window
     arrow = true, -- quest-style arrow showing the move for each echo
     arrowColor = "gold", -- key into AZT.ARROW_COLORS
-    arrowCompass = false, -- arrow points the way the board does, no spoken calls
-    cues = true, -- spoken direction calls during the echoes
+    arrowCompass = false, -- arrow points the way the room view does, no spoken cues
+    cues = true, -- spoken cues during the echoes
     cueChannel = "Master", -- sound channel the calls play through
-    quadIcons = {}, -- world marker icon per section letter, board display only
+    quadIcons = {}, -- world marker icon per quarter letter, board display only
     log = {}, -- persisted log lines (survive /reload and crashes)
 }
 
@@ -128,13 +128,13 @@ function AZT.QuadName(q, size)
 end
 
 local HELP = {
-    "/azt room          - toggle the boss room top-down view (auto-shows in the delve)",
+    "/azt room          - toggle the room view (auto-shows in the delve)",
     "/azt map           - toggle the map art backdrop behind the room view",
-    "/azt n|e|s|w       - record that section as the safe spot (bindable keys too)",
+    "/azt n|e|s|w       - answer a wave with that quarter (bindable keys too)",
     "/azt replay        - practice: replay the last recorded route with real timings",
-    "/azt cue           - toggle the spoken direction calls during the echoes (beta)",
+    "/azt cue           - toggle the spoken cues during the echoes (beta)",
     "/azt review        - what the last pull recorded and where you died",
-    "/azt reset         - clear the captured safe-spot sequence",
+    "/azt reset         - clear the recorded route",
     "/azt preview       - hold the countdown and arrow on screen, to drag into place",
     "/azt options       - open the settings panel",
     "/azt help          - how the recording and the callouts work",
@@ -158,14 +158,14 @@ SlashCmdList["AZT"] = function(msg)
         AZT.Safe.Replay()
     elseif cmd == "cue" then
         AztarecHelperDB.cues = not AztarecHelperDB.cues
-        chat("direction cues: " .. (AztarecHelperDB.cues and "ON" or "OFF"))
+        chat("spoken cues: " .. (AztarecHelperDB.cues and "ON" or "OFF"))
     elseif cmd == "review" then
         AZT.Safe.Review()
     elseif cmd == "reset" then
         AZT.Safe.Reset()
-        chat("safe-spot sequence cleared")
+        chat("recorded route cleared")
     elseif cmd == "preview" or cmd == "place" then
-        AZT.SetPlaceMode(not AZT.placeMode)
+        AZT.SetPreviewMode(not AZT.previewMode)
     elseif cmd == "options" or cmd == "opt" then
         AZT.OpenOptions()
     elseif cmd == "help" then

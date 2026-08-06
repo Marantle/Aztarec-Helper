@@ -14,10 +14,11 @@ local Safe = {}
 AZT.Safe = Safe
 
 BINDING_HEADER_AZTARECHELPER = "Azta'rec Helper"
-BINDING_NAME_AZTARECHELPER_MARK_NORTH = "Azta'rec Helper: mark north safe"
-BINDING_NAME_AZTARECHELPER_MARK_EAST = "Azta'rec Helper: mark east safe"
-BINDING_NAME_AZTARECHELPER_MARK_SOUTH = "Azta'rec Helper: mark south safe"
-BINDING_NAME_AZTARECHELPER_MARK_WEST = "Azta'rec Helper: mark west safe"
+-- display names only. The MARK command ids stay, renaming those drops keybinds
+BINDING_NAME_AZTARECHELPER_MARK_NORTH = "Azta'rec Helper: answer north"
+BINDING_NAME_AZTARECHELPER_MARK_EAST = "Azta'rec Helper: answer east"
+BINDING_NAME_AZTARECHELPER_MARK_SOUTH = "Azta'rec Helper: answer south"
+BINDING_NAME_AZTARECHELPER_MARK_WEST = "Azta'rec Helper: answer west"
 
 local seq = {}
 local armed = false
@@ -123,8 +124,8 @@ local function snapshotPull()
 end
 
 -- the window walk. The ticker advances the wave index for the countdown
--- display and closes windows the player never keyed, every spot comes fromt
--- the section keys.
+-- display and closes windows the player never answered, every spot comes fromt
+-- the quarter keys.
 local function beginCapture(unit)
     stopTicker()
     wipe(seq)
@@ -152,7 +153,7 @@ local function beginCapture(unit)
             end
         end
     end)
-    AZT.Log("CAPTURE open - key each wave's section as you run it")
+    AZT.Log("CAPTURE open - answer each wave with the quarter you run to")
 end
 
 local function finishCapture()
@@ -198,7 +199,7 @@ local function finishCapture()
     end)
 end
 
--- section keys: the player names the quarter outright, no position read
+-- quarter keys: the player names the quarter outright, no position read
 -- anywhere. Answers land in order. The earliest wave still unanswered takes
 -- the press, and nothing can be answered before its wave has happened, so
 -- missing one and tapping twice gets you level again instead of shifting
@@ -207,7 +208,7 @@ end
 -- walking a route in by hand between pulls.
 local function fillSpot(i, q, caught)
     seq[i] = q
-    AZT.Log(("SAFESPOT keyed %d = %s%s"):format(i, q, caught and " (caught up)" or ""))
+    AZT.Log(("SAFESPOT answered %d = %s%s"):format(i, q, caught and " (caught up)" or ""))
     AZT.chat(("safe spot %d: %s"):format(i, AZT.QuadName(q, 14)))
     if AZT.SetSafeQuads then
         AZT.SetSafeQuads(seq, echoIdx > 0 and echoIdx or nil)
@@ -241,7 +242,7 @@ function Safe.CaptureQuadrant(q)
     fillSpot(#seq + 1, q)
 end
 
--- globals for Bindings.xml, one per section
+-- globals for Bindings.xml, one per quarter
 function AztarecHelper_MarkNorth()
     Safe.CaptureQuadrant("N")
 end
@@ -521,7 +522,7 @@ ef:SetScript("OnEvent", function(_, event, ...)
                 AZT.Cue(seq[echoIdx], at, echoIdx > 1 and seq[echoIdx - 1] or seq[#seq])
             end
             if echoIdx >= #seq then
-                -- clear the radar just after the last wave actually lands:
+                -- clear the board just after the last wave actually lands:
                 -- cast end plus a beat to see the outcome, or a spacing's
                 -- worth when the end time was unreadable
                 local delay
