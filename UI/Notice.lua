@@ -49,9 +49,10 @@ local INSTR = "Azta'rec slams three quarters of the room at once during Sermon o
     .. "right from there, and stay means the route keeps you where you are. Turn "
     .. "your back on him and they will be backwards, so keep him in front of you.\n\n"
     .. "Your four keys live in the settings panel and in the game's Key Bindings screen "
-    .. "under AddOns. Each quarter on the board shows its own key. Click a quarter's "
-    .. "letter out of combat to swap it for a world marker icon, if flags are how your "
-    .. "group calls the room. Between pulls, /azt replay walks the last route again at "
+    .. "under AddOns. Each quarter on the board shows its own key. The quarters wear "
+    .. "markers rather than compass letters. drop the matching flares in the room. Click a marker out of combat "
+    .. "to change it. Between pulls, /azt replay walks "
+    .. "the last route again at "
     .. "its real speed and /azt review says what it recorded."
 
 local function build()

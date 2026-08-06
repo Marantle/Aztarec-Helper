@@ -13,10 +13,12 @@ local FLASH_UNDER = 1.5 -- countdown starts pulsing this close to a hit
 local FLASH_HZ = 2.0
 local COUNT_CAP = 9 -- a countdown longer than this is noise
 
+local BOX_H = 34
+
 local function buildWave()
     waveFrame = CreateFrame("Frame", "AztarecHelperWaveText", UIParent)
-    waveFrame:SetSize(230, 34)
-    AZT.MakeMovable(waveFrame, "wavePos", "TOP", 0, -180)
+    waveFrame:SetSize(230, BOX_H)
+    AZT.MakeMovable(waveFrame, "wavePos", "TOP", 0, -180 - BOX_H * 1.5)
 
     local bg = waveFrame:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()

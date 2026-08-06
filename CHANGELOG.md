@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.3
+- The quarters now by default select markers. triangle north, square east, cross south, circle west, which is `/wm 2`, `/wm 1`, `/wm 4` and `/wm 6` for the matching flares
+- Click a marker out of combat to change it or put the letter back
+- The map art behind the room view starts off now
+- The room view says "keybinds not set" while any of the four section keys is still unbound
+- Slim room view in the settings cuts the window down to the room itself, dropping the title, the Instructions button and the compass letters
+- Tidier default window positions on a fresh install
+
 ## 1.3.2
 - `/azt replay` calls each step as it comes up. It used to hold the call until the step was nearly over, which put the voice about three seconds later than a real pull and made it sound a step behind
 - The arrow points at your feet through the Sermon, so the moment it swings to the first call you know the echoes have started

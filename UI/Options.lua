@@ -112,6 +112,17 @@ refreshers[#refreshers + 1] = function()
     colorBtn:SetText("Arrow: " .. AZT.ArrowColor().label)
 end
 
+addCheck(
+    "Slim room view",
+    "Changes the room view to only show map, with excess padding removed. `/azt help` still opens the instructions.",
+    function()
+        return AztarecHelperDB.roomSlim
+    end,
+    function(v)
+        AZT.SetRoomSlim(v)
+    end
+)
+
 addCheck("Map art backdrop", "Draws Blizzard's own map tiles behind the room view.", function()
     return AztarecHelperDB.mapArt
 end, function(v)

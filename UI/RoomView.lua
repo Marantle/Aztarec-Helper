@@ -44,7 +44,7 @@ local function build()
     if pos and pos.point then
         view:SetPoint(pos.point, UIParent, pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
     else
-        view:SetPoint("RIGHT", UIParent, "RIGHT", -60, 0)
+        view:SetPoint("CENTER", UIParent, "CENTER", (SIZE + 24) * 1.5, 0)
     end
     view:SetFrameStrata("MEDIUM")
     view:SetBackdrop({
@@ -214,7 +214,7 @@ local function build()
         btn:SetScript("OnEnter", function(b)
             hint:SetVertexColor(1, 0.82, 0, 1)
             GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
-            GameTooltip:SetText("Click to show a world marker icon here instead of the letter", 1, 1, 1, 1, true)
+            GameTooltip:SetText("Click to select a different marker", 1, 1, 1, 1, true)
             GameTooltip:Show()
         end)
         btn:SetScript("OnLeave", function()
@@ -247,13 +247,48 @@ local function build()
     center:SetPoint("CENTER")
     center:SetColorTexture(1, 0.35, 0.35, 0.9)
 
-    -- compass letters on the view edge
+    -- an empty binding is silent until the pull, so it says so here, in the
+    -- gap between the room and the south compass letter
+    local noKeys = canvas:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    noKeys:SetText("keybinds not set")
+    noKeys:SetTextColor(1, 0.82, 0, 0.9)
+    noKeys:Hide()
+
+    -- compass letters on the view edge, the first thing to go when the
+    -- window is cut down to the room
+    local compass = {}
     local edge = SIZE / 2 - 8
     for _, c in ipairs({ { "N", 0, 1 }, { "E", 1, 0 }, { "S", 0, -1 }, { "W", -1, 0 } }) do
         local fs = canvas:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         fs:SetText(c[1])
         fs:SetPoint("CENTER", canvas, "CENTER", c[2] * edge, c[3] * edge)
+        compass[#compass + 1] = fs
     end
+
+    -- Slim cuts the canvas down to the room itself, so the border lands on
+    -- the wall rather than a screen's worth of empty floor. Everything that
+    -- lived out in that space goes with it, and the way into the settings
+    -- shrinks rather than leaves.
+    local function applyChrome()
+        local slim = AztarecHelperDB.roomSlim
+        local side = slim and math.floor(2 * rp + 4) or SIZE
+        title:SetShown(not slim)
+        instrBtn:SetShown(not slim)
+        optBtn:SetSize(slim and 40 or 74, 18)
+        optBtn:SetText(slim and "Opts" or "Options")
+        for _, fs in ipairs(compass) do
+            fs:SetShown(not slim)
+        end
+        canvas:SetSize(side, side)
+        canvas:ClearAllPoints()
+        canvas:SetPoint(slim and "CENTER" or "BOTTOM", 0, slim and 0 or 22)
+        view:SetSize(side + (slim and 8 or 24), side + (slim and 8 or 46))
+        -- below the wall normally, just inside it when there is no outside
+        noKeys:ClearAllPoints()
+        noKeys:SetPoint("CENTER", canvas, "CENTER", 0, slim and -(rp - 16) or -(rp + 18))
+    end
+    view.applyChrome = applyChrome
+    applyChrome()
 
     -- fixed north-up layout. The grid draws turned 45 degrees so the wedges
     -- center on their cardinal names and the boundaries land on the
@@ -347,11 +382,14 @@ local function build()
         -- the key tags help while learning and while recording, during the
         -- echoes the board is telling you where to go instead
         local echoing = w and (w.phase == "echo" or w.phase == "replay")
+        local unbound = false
         for i, q in ipairs(QUADS) do
             local key = GetBindingKey(BIND_CMD[q.name])
+            unbound = unbound or not key
             keyTags[i]:SetText(key and GetBindingText(key) or "")
             keyTags[i]:SetShown((key and not echoing) and true or false)
         end
+        noKeys:SetShown((unbound and not echoing) and true or false)
     end
     AZT.QuadClickSync()
 
@@ -419,6 +457,13 @@ function AZT.SetSafeQuads(list, activeIdx)
 end
 
 --#region Controls
+
+function AZT.SetRoomSlim(v)
+    AztarecHelperDB.roomSlim = v and true or false
+    if view then
+        view.applyChrome()
+    end
+end
 
 function AZT.ToggleMapArt()
     AztarecHelperDB.mapArt = not AztarecHelperDB.mapArt

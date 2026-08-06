@@ -5,7 +5,7 @@
 
 local ADDON, AZT = ...
 
-AZT.VERSION = "1.3.2"
+AZT.VERSION = "1.3.3"
 
 -- Venomfall Deeps boss room, measured on PTR 12.1.0.
 -- UnitPosition returns (a, b, z, inst). The addon prints them as world=b,a.
@@ -31,7 +31,8 @@ local DEFAULTS = {
     nameFilter = "", -- substring filter for target/nameplate casts, "" logs every hostile cast
     posOnCast = true, -- append a player position probe to every cast line
     roomView = true, -- the main room view window
-    mapArt = true, -- draw Blizzard's map art tiles behind the room view
+    roomSlim = false, -- room view without its title and buttons
+    mapArt = false, -- draw Blizzard's map art tiles behind the room view
     waveText = true, -- floating wave countdown window
     arrow = true, -- quest-style arrow showing the move for each echo
     arrowColor = "gold", -- key into AZT.ARROW_COLORS
@@ -63,6 +64,16 @@ f:SetScript("OnEvent", function(_, event, ...)
         -- the grid rotation toggle is gone so clear its leftovers from old SVs
         AztarecHelperDB.quadRot = nil
         AztarecHelperDB.quadRotMigrated = nil
+        if not AztarecHelperDB.mapArtOffOnce then
+            AztarecHelperDB.mapArtOffOnce = true
+            AztarecHelperDB.mapArt = false
+        end
+        if not AztarecHelperDB.quadIconsSeeded then
+            AztarecHelperDB.quadIconsSeeded = true
+            if next(AztarecHelperDB.quadIcons) == nil then
+                AztarecHelperDB.quadIcons = { N = 4, E = 6, S = 7, W = 2 }
+            end
+        end
         -- 1.3.0 removed everything position-fed: auto sampling, the manual
         -- toggle, the move warning and the view modes. Clear their leftovers
         AztarecHelperDB.manualMode = nil

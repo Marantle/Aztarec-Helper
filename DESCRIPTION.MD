@@ -29,8 +29,8 @@ Everything that reads the boss still works. It knows when the Sermon starts, how
 *   Spoken calls for anyone who would rather listen than look. As each echo starts a voice says forward, left, right or stay, working from the order you recorded. `/azt cue` toggles them, and the settings panel has a test button for each sound.
 *   Wave countdown in its own small window. It shows which wave is up and which quarter comes after this one, and it counts the seconds down while the boss's own timing is readable.
 *   Top-down room radar with the actual in-game map behind it, which you can turn off. Green is the current safe quarter, yellow is the next one and red is everything else. The board holds north up.
-*   Do you drop world markers in the room? Click a section letter on the radar and pick the matching flag. The addon then names that quarter by its flag everywhere, on the radar, the countdown, the arrow and in chat, so it speaks your group's language instead of compass letters.
-*   An Instructions button on the radar explains the whole thing in one page.
+*   The quarters are marked with world markers. From north clockwise, triangle, square, cross and circle, so `/wm 2`, `/wm 1`, `/wm 4` and `/wm 6` drop the matching markers in the room. The markers name the quarters everywhere, on the radar, the countdown, the arrow and in chat, and clicking one out of combat changes it.
+*   An Instructions button on the radar explains the whole thing in one page. Slim room view in the settings minimizes the room window.
 *   A wave you never answered shows as unknown, on the board and through its echo.
 *   `/azt review` shows what the last pull recorded and, if you died, which echo got you. `/azt replay` runs the route through the display on its real timings, so you can practice reading it between pulls.
 *   Handles the longer sequences on higher tiers, where the pattern grows with every intermission.
