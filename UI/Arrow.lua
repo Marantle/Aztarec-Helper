@@ -16,7 +16,7 @@ local _, AZT = ...
 local arrowFrame
 
 -- Two ways to read the arrow, and mixing them is what gives people mixed
--- signals. Relative assumes you look at the boss from your quarter, 
+-- signals. Relative assumes you look at the boss from your quarter,
 -- Compass drops that assumption and points the way the room view does
 local TURN_RAD = { stay = math.pi, forward = 0, left = math.pi / 2, right = -math.pi / 2 }
 local QUAD_ROT = { N = 0, E = -math.pi / 2, S = math.pi, W = math.pi / 2 }
