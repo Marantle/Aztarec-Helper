@@ -375,7 +375,8 @@ function Safe.Replay()
                 AZT.SetSafeQuads(list, due)
             end
             if AZT.Cue then
-                AZT.Cue(list[due], startT + due * g.spacing, due > 1 and list[due - 1] or list[#list])
+                -- no landing time, so it speaks now as a real pull does
+                AZT.Cue(list[due], nil, due > 1 and list[due - 1] or list[#list])
             end
         end
     end)

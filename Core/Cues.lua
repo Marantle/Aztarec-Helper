@@ -78,11 +78,13 @@ function AZT.Cue(safeQuad, hitAt, fromQuad)
         return
     end
     local delay
-    local ok, d = pcall(function()
-        return hitAt - GetTime() - CUE_LEAD
-    end)
-    if ok and type(d) == "number" and d > 0.1 and d < 10 then
-        delay = d
+    if hitAt then
+        local ok, d = pcall(function()
+            return hitAt - GetTime() - CUE_LEAD
+        end)
+        if ok and type(d) == "number" and d > 0.1 and d < 10 then
+            delay = d
+        end
     end
     if not delay then
         speak(safeQuad, fromQuad)

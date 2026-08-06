@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2
+- `/azt replay` calls each step as it comes up. It used to hold the call until the step was nearly over, which put the voice about three seconds later than a real pull and made it sound a step behind
+- The arrow points at your feet through the Sermon, so the moment it swings to the first call you know the echoes have started
+
 ## 1.3.1
 - The arrow holds one color the whole way through an echo phase, and you pick which one in the settings panel. Gold, red, green, white, cyan or violet, with gold leaving the artwork as it was painted
 - The red and green states are gone. Green was meant for the moment a wave lands, and the encounter hides that moment, so it almost never arrived and the arrow sat red regardless

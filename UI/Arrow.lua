@@ -111,11 +111,17 @@ local function buildArrow()
             return
         end
         elapsed = 0
+        local w = AZT.Wave
+        if w and w.phase == "record" then
+            -- nothing to call during the Sermon, so it points at your feet.
+            showPointer(easeTo(math.pi), 1, AZT.ArrowColor().rgb)
+            label:SetText("")
+            return
+        end
         local safeNow = AZT.safeNow
         if not safeNow then
             return -- parked, ArrowSync painted the waiting state already
         end
-        local w = AZT.Wave
         local list = AZT.safeList
         local blank = not (w and (w.phase == "echo" or w.phase == "replay") and w.idx > 0 and list)
         -- an echo this far overdue means the run stopped, so stop pointing
@@ -165,7 +171,8 @@ function AZT.ArrowSync()
         buildArrow()
     end
     arrowFrame:SetShown(on and true or false)
-    if on and not live then
+    -- while recording the update loop owns the arrow, so leave it alone
+    if on and not live and not recording then
         -- the colour you picked, dimmed. Parking it in grey would hide the
         -- one thing you are looking at while choosing one.
         arrowFrame.showPointer(0, PARK_ALPHA, AZT.ArrowColor().rgb)

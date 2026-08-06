@@ -28,14 +28,14 @@ Everything that reads the boss still works. It knows when the Sermon starts, how
 *   The arrow gives you the move for each echo. Up is straight through the boss, left and right are your own and down means stay where you are.
 *   Spoken calls for anyone who would rather listen than look. As each echo starts a voice says forward, left, right or stay, working from the order you recorded. `/azt cue` toggles them, and the settings panel has a test button for each sound.
 *   Wave countdown in its own small window. It shows which wave is up and which quarter comes after this one, and it counts the seconds down while the boss's own timing is readable.
-*   Top-down room radar with the actual in-game map behind it, which you can turn off. Green is the current safe quarter, yellow is the next one, red is everything else. The board holds north up.
+*   Top-down room radar with the actual in-game map behind it, which you can turn off. Green is the current safe quarter, yellow is the next one and red is everything else. The board holds north up.
 *   Do you drop world markers in the room? Click a section letter on the radar and pick the matching flag. The addon then names that quarter by its flag everywhere, on the radar, the countdown, the arrow and in chat, so it speaks your group's language instead of compass letters.
-*   An Instructions button on the radar explains the whole thing in one page, for the pull where you forgot how it goes.
+*   An Instructions button on the radar explains the whole thing in one page.
 *   A wave you never answered shows as unknown, on the board and through its echo.
 *   `/azt review` shows what the last pull recorded and, if you died, which echo got you. `/azt replay` runs the route through the display on its real timings, so you can practice reading it between pulls.
 *   Handles the longer sequences on higher tiers, where the pattern grows with every intermission.
 *   Every window drags where you want it and remembers the spot. A small padlock in the corner locks a window in place and lets clicks pass through it. `/azt preview` holds the countdown and the arrow on screen, so you can arrange your layout without pulling the boss first.
-*   A settings panel with the section keys bindable in it. Open it with `/azt options`, from the Opts button on the room view or from the addon compartment by the minimap.
+*   A settings panel with the section keys bindable in it. Open it with `/azt options`, from the Options button on the room view or from the addon compartment by the minimap.
 
 *A note on lineage: if you have seen another addon do this, the idea started here. The recording and the radar were measured and built in mid-July 2026 and went public in this addon on July 25. The file list on this page is the proof. The other addon for this fight adopted the approach in early August, with credit to this one in its source.*
 
