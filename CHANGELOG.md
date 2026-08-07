@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.5
+- Naming conventions unified, like the the main window is now referred to as Room View everywhere, and marking a safe zone is now referred to as Answer
+
 ## 1.3.4
 - Compass arrow in the settings, for anyone who does not keep the boss in front of them. The arrow points the way the room view points and carries that quarter's marker below it, so it tells you the compass direction to run in. The spoken cues stay quiet in that mode, since forward and left only mean something in the old relative mode
 - The quarter's marker under the arrow draws bigger, in both modes
