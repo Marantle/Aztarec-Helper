@@ -86,7 +86,7 @@ function AZT.WaveSync()
     local live = AZT.Wave and AZT.Wave.phase ~= nil
     local fighting = AZT.inCombat or InCombatLockdown() or (AZT.Safe and AZT.Safe.IsArmed and AZT.Safe.IsArmed())
     local idleParked = AZT.InDelve() and not fighting
-    local on = AztarecHelperDB.waveText and (live or idleParked or AZT.previewMode)
+    local on = AztarecHelperDB.waveText and (live or idleParked)
     if not waveFrame then
         if not on then
             return
@@ -95,9 +95,8 @@ function AZT.WaveSync()
     end
     waveFrame:SetShown(on and true or false)
     if on and not live then
-        -- named while it is only sitting there, and a sample countdown while
-        -- placing so the window is the width it will really be
-        waveFrame.text:SetText(AZT.previewMode and "N  wave 2 of 5 - 1.8  >  E" or "wave countdown")
+        -- named while it is only sitting there
+        waveFrame.text:SetText("wave countdown")
         waveFrame.text:SetTextColor(1, 1, 1, 0.5)
     end
 end

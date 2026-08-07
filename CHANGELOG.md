@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.6
+- The compass arrow no longer silences the spoken cues. 1.3.4 muted them in that mode while the cue toggle still said ON, which came back in reports as broken audio. The cues now keep playing, spoken as if you face the boss like always
+- In their place a question box explains the pairing the first time you tick the compass arrow: the arrow reads the map while the voice reads you, and you choose whether the cues stay on or go. Anyone already running the compass skips the question and keeps whatever their cue toggle already says
+- The Preview windows button in the settings plays the memory game now: three pretend waves run through the room view, the countdown and the arrow on the real cadence, calls included. The old static preview and `/azt preview` are gone, watching the pretend run is how you drag the windows into place now
+
 ## 1.3.5
 - Naming conventions unified, like the the main window is now referred to as Room View everywhere, and marking a safe zone is now referred to as Answer
 

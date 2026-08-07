@@ -177,7 +177,7 @@ function AZT.ArrowSync()
     -- exists while the memory game itself is running.
     local fighting = AZT.inCombat or InCombatLockdown() or (AZT.Safe and AZT.Safe.IsArmed and AZT.Safe.IsArmed())
     local idleParked = AZT.InDelve() and not fighting
-    local on = AztarecHelperDB.arrow and (live or recording or idleParked or AZT.previewMode)
+    local on = AztarecHelperDB.arrow and (live or recording or idleParked)
     if not arrowFrame then
         if not on then
             return

@@ -331,31 +331,30 @@ function Safe.StopReplay()
     end
 end
 
--- Practice run between pulls: walk the last recorded route across the room
--- view on its real wave cadence. Display only, the live capture state stays
--- untouched, and pulling the boss cancels it.
-function Safe.Replay()
+-- shared front door for both replay flavors: a second click stops the run
+-- that is going, and nothing starts during the pull. Says whether the
+-- caller may start a fresh run.
+local function replayGate()
     if armed then
         AZT.chat("not during the pull")
-        return
+        return false
     end
     if replayTicker then
         Safe.StopReplay()
         AZT.chat("replay stopped")
-        return
+        return false
     end
-    if not lastPull or #lastPull.seq == 0 then
-        AZT.chat("nothing recorded yet - pull the boss once first")
-        return
-    end
-    local g = lastPull.grid or grid
-    local list = lastPull.seq
+    return true
+end
+
+-- walk a route across the room view on its real wave cadence. Display
+-- only, the live capture state stays untouched.
+local function runReplay(list, g)
     local startT = GetTime() + REPLAY_LEAD
     local shown = 0
     if AZT.EnsureRoomView then
         AZT.EnsureRoomView()
     end
-    AZT.chat(("replaying the last route (%d waves) - move along with it, or just watch"):format(#list))
     replayTicker = C_Timer.NewTicker(0.18, function()
         local nowT = GetTime()
         local due = 0
@@ -381,6 +380,31 @@ function Safe.Replay()
             end
         end
     end)
+end
+
+-- practice run between pulls, over what the last pull recorded
+function Safe.Replay()
+    if not replayGate() then
+        return
+    end
+    if not lastPull or #lastPull.seq == 0 then
+        AZT.chat("nothing recorded yet - pull the boss once first")
+        return
+    end
+    AZT.chat(("replaying the last route (%d waves) - move along with it, or just watch"):format(#lastPull.seq))
+    runReplay(lastPull.seq, lastPull.grid or grid)
+end
+
+-- three made-up waves for the settings button, so the whole echo display
+-- can be watched without ever pulling the boss
+local DEMO_ROUTE = { "N", "E", "W", "S" }
+
+function Safe.PreviewReplay()
+    if not replayGate() then
+        return
+    end
+    AZT.chat("previewing three pretend waves - this is what the echoes look like")
+    runReplay(DEMO_ROUTE, grid)
 end
 
 --#endregion

@@ -85,16 +85,3 @@ function AZT.MakeMovable(frame, posKey, defPoint, defX, defY)
     end)
 end
 --#endregion
-
---#region Placement
-
--- preview: hold the floating windows on screen with sample content, since
--- they normally only exist while the boss is doing something and that is a
--- bad moment to be dragging them. Session state, never saved.
-function AZT.SetPreviewMode(v)
-    AZT.previewMode = v and true or false
-    AZT.WaveSync()
-    AZT.ArrowSync()
-    AZT.chat(AZT.previewMode and "preview on - drag the countdown and the arrow where you want them" or "preview off")
-end
---#endregion

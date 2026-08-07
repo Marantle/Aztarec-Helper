@@ -5,7 +5,7 @@
 
 local ADDON, AZT = ...
 
-AZT.VERSION = "1.3.5"
+AZT.VERSION = "1.3.6"
 
 -- Venomfall Deeps boss room, measured on PTR 12.1.0.
 -- UnitPosition returns (a, b, z, inst). The addon prints them as world=b,a.
@@ -86,6 +86,12 @@ f:SetScript("OnEvent", function(_, event, ...)
         if AztarecHelperDB.cueChannel == "Talking Head" then
             AztarecHelperDB.cueChannel = "Master"
         end
+        -- 1.3.4 muted the spoken cues under the compass arrow and 1.3.6
+        -- unmutes them. Anyone already on the compass keeps their cue
+        -- toggle as it stands and skips the ask box new compass users get
+        if AztarecHelperDB.arrowCompass then
+            AztarecHelperDB.compassCueAsked = true
+        end
     elseif event == "PLAYER_LOGIN" then
         if AZT.Recorder then
             AZT.Recorder.Init()
@@ -135,7 +141,6 @@ local HELP = {
     "/azt cue           - toggle the spoken cues during the echoes (beta)",
     "/azt review        - what the last pull recorded and where you died",
     "/azt reset         - clear the recorded route",
-    "/azt preview       - hold the countdown and arrow on screen, to drag into place",
     "/azt options       - open the settings panel",
     "/azt help          - how the recording and the callouts work",
     "/azt version       - addon version",
@@ -164,8 +169,6 @@ SlashCmdList["AZT"] = function(msg)
     elseif cmd == "reset" then
         AZT.Safe.Reset()
         chat("recorded route cleared")
-    elseif cmd == "preview" or cmd == "place" then
-        AZT.SetPreviewMode(not AZT.previewMode)
     elseif cmd == "options" or cmd == "opt" then
         AZT.OpenOptions()
     elseif cmd == "help" then

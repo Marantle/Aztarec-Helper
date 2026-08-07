@@ -116,14 +116,19 @@ addCheck(
     "Compass arrow",
     "Off is the relative arrow: the move to make as if you were facing the boss, and the voice calls the"
         .. " same move. On is the compass arrow: it points the way the room view points and carries that"
-        .. " quarter's marker inside it, and the calls stay quiet since forward and left mean nothing"
-        .. " in that reading.",
+        .. " quarter's marker inside it. The spoken cues keep talking as if you face the boss either way,"
+        .. " so turn them off below if the two readings mix badly for you.",
     function()
         return AztarecHelperDB.arrowCompass
     end,
     function(v)
         AztarecHelperDB.arrowCompass = v
         AZT.ArrowSync()
+        -- the voice has no compass mode, so the first switch comes with a
+        -- one-time heads-up about the mixed readings
+        if v and AztarecHelperDB.cues and not AztarecHelperDB.compassCueAsked then
+            AZT.ShowCompassCueAsk()
+        end
     end
 )
 
@@ -300,19 +305,14 @@ addCheck(
 
 y = y - 8
 
-local previewBtn
-previewBtn = addAction(
-    "Preview windows",
+addAction(
+    "Preview the memory game",
     function()
-        AZT.SetPreviewMode(not AZT.previewMode)
-        previewBtn:SetText(AZT.previewMode and "Hide preview" or "Preview windows")
+        AZT.Safe.PreviewReplay()
     end,
-    "Holds the countdown and the arrow on screen out of combat so you can drag them where you want."
-        .. " They normally only appear while the boss is doing something."
+    "Plays three pretend waves through the room view, the countdown and the arrow, the way a real"
+        .. " echo phase looks. Click again to stop it early."
 )
-refreshers[#refreshers + 1] = function()
-    previewBtn:SetText(AZT.previewMode and "Hide preview" or "Preview windows")
-end
 
 addAction("Replay last pull", function()
     AZT.Safe.Replay()

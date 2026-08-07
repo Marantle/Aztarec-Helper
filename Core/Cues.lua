@@ -74,8 +74,7 @@ end
 -- hit, so it arrives when moving is due. With no readable landing time it
 -- speaks at once rather than never.
 function AZT.Cue(safeQuad, hitAt, fromQuad)
-    -- With the compass mode, mute  the relative sound cues
-    if not AztarecHelperDB.cues or AztarecHelperDB.arrowCompass then
+    if not AztarecHelperDB.cues then
         return
     end
     local delay

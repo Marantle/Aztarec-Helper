@@ -87,24 +87,50 @@ local function build()
     body:SetSpacing(2)
     box.body = body
 
-    local btn = CreateFrame("Button", nil, box, "UIPanelButtonTemplate")
-    btn:SetSize(90, 22)
-    btn:SetPoint("BOTTOM", 0, 12)
-    btn:SetText("Got it")
-    btn:SetScript("OnClick", function()
-        box:Hide()
-    end)
+    -- one button for reading, two when the box is asking something
+    local right = CreateFrame("Button", nil, box, "UIPanelButtonTemplate")
+    right:SetSize(150, 22)
+    right:SetPoint("BOTTOM", 0, 12)
+    box.right = right
+
+    local left = CreateFrame("Button", nil, box, "UIPanelButtonTemplate")
+    left:SetSize(150, 22)
+    left:SetPoint("RIGHT", right, "LEFT", -8, 0)
+    box.left = left
 
     table.insert(UISpecialFrames, "AztarecHelperNotice")
 end
 
-local function show(title, text)
+-- text with one dismiss button, or a question with a choice on either side
+local function show(title, text, ask)
     if not box then
         build()
     end
     box.title:SetText(title)
     box.body:SetText(text)
     box:SetHeight(38 + box.body:GetStringHeight() + 48)
+    box.left:SetShown(ask and true or false)
+    box.right:ClearAllPoints()
+    if ask then
+        box.left:SetText(ask.leftText)
+        box.left:SetScript("OnClick", function()
+            box:Hide()
+            ask.left()
+        end)
+        -- shifted right so the pair sits centred with the left button
+        box.right:SetPoint("BOTTOM", 79, 12)
+        box.right:SetText(ask.rightText)
+        box.right:SetScript("OnClick", function()
+            box:Hide()
+            ask.right()
+        end)
+    else
+        box.right:SetPoint("BOTTOM", 0, 12)
+        box.right:SetText("Got it")
+        box.right:SetScript("OnClick", function()
+            box:Hide()
+        end)
+    end
     box:Show()
 end
 
@@ -115,6 +141,30 @@ end
 
 function AZT.ShowInstructions()
     show(INSTR_TITLE, INSTR)
+end
+
+-- The compass arrow changes what the arrow points at, but the voice has no
+-- compass mode, it keeps talking as if you face the boss. Said once when
+-- the compass is first ticked, with the choice in hand, instead of
+-- silently mixing the two readings. Anyone who ran the compass before this
+-- ask existed is grandfathered by the bootstrap and keeps their cue toggle
+-- as it stands.
+local COMPASS_TITLE = "Compass arrow and the spoken cues"
+local COMPASS_CUES = "With compass arrow, the arrow points the way the room view does "
+    .. "but the voices still talk as if you are facing the boss. "
+    .. "Disable Spoken cues in options if you want the arrow to be the only cue. "
+
+function AZT.ShowCompassCueAsk()
+    AztarecHelperDB.compassCueAsked = true
+    show(COMPASS_TITLE, COMPASS_CUES, {
+        leftText = "Turn cues off",
+        left = function()
+            AztarecHelperDB.cues = false
+            AZT.chat("spoken cues: OFF")
+        end,
+        rightText = "Keep the cues",
+        right = function() end,
+    })
 end
 
 local ef = CreateFrame("Frame")
