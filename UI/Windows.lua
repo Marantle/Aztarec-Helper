@@ -9,9 +9,9 @@ local _, AZT = ...
 
 --#region Locks
 -- Each floating window carries a padlock in its corner. A locked window
--- can't be dragged and lets clicks pass through it. Only the padlock itself
--- and the room view's opts button still take the mouse. While locked the
--- padlock hides until the cursor crosses it.
+-- can't be dragged and lets clicks pass through it. Only the padlock itself,
+-- the room view's buttons and the quarter icon menus still take the mouse.
+-- While locked the padlock hides until the cursor crosses it.
 
 local lockApply = {}
 

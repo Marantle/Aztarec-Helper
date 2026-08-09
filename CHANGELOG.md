@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.8
+- The quarter marker menus work on a locked room view now, out of combat. The lock still blocks dragging and still lets fight clicks pass through, it just stopped taking the icon menus down with it
+
 ## 1.3.7
 - The quarter you answer flashes for a moment, keyed or clicked, so you know the press landed without taking your eyes off the fight
 - Answer presses during the pull only count in the Sermon and the echoes now. A stray press in the dead moments used to sneak an extra wave onto the route and confuse the countdown. Sketching a route by hand between pulls stays as it was

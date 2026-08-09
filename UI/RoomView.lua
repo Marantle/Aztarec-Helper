@@ -182,7 +182,6 @@ local function build()
     }
     local rp = ROOM.radius * ppy
     local wedges, qlabels = {}, {}
-    local labelBtns = {}
     local labelHints = {}
     local menuBtns = {}
     for i, q in ipairs(QUADS) do
@@ -221,7 +220,6 @@ local function build()
             hint:SetVertexColor(1, 0.82, 0, 0.6)
             GameTooltip:Hide()
         end)
-        labelBtns[#labelBtns + 1] = btn
         menuBtns[i] = btn
     end
 
@@ -424,7 +422,9 @@ local function build()
     end
     AZT.QuadClickSync()
 
-    AZT.AttachLock(view, "room", labelBtns, -6, -4)
+    -- the icon menus stay usable under the lock. Out of combat they are the
+    -- reason to click the board at all, and in a fight they are hidden anyway
+    AZT.AttachLock(view, "room", nil, -6, -4)
 end
 
 -- highlight the recorded route (list of quarter names).
