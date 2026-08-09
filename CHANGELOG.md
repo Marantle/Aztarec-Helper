@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.7
+- The quarter you answer flashes for a moment, keyed or clicked, so you know the press landed without taking your eyes off the fight
+- Answer presses during the pull only count in the Sermon and the echoes now. A stray press in the dead moments used to sneak an extra wave onto the route and confuse the countdown. Sketching a route by hand between pulls stays as it was
+
 ## 1.3.6
 - The compass arrow no longer silences the spoken cues. 1.3.4 muted them in that mode while the cue toggle still said ON, which came back in reports as broken audio. The cues now keep playing, spoken as if you face the boss like always
 - In their place a question box explains the pairing the first time you tick the compass arrow: the arrow reads the map while the voice reads you, and you choose whether the cues stay on or go. Anyone already running the compass skips the question and keeps whatever their cue toggle already says

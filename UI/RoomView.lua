@@ -318,6 +318,7 @@ local function build()
     -- menus, and they stay deliberately outside the padlock's reach since
     -- the lock is there to stop accidental drags, not mid-fight input
     local quadHits = {}
+    local flashes = {}
     for i, q in ipairs(QUADS) do
         -- own layer for the hover glow, so the route repaint and the mouse
         -- never fight over one texture's color
@@ -348,6 +349,36 @@ local function build()
         end)
         hit:Hide()
         quadHits[i] = hit
+
+        -- press feedback: the answered quarter blinks once, so a key hit in
+        -- the scramble is never in doubt
+        local flash = canvas:CreateTexture(nil, "ARTWORK", nil, 5)
+        flash:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+        flash:SetTexCoord(unpack(q.tc))
+        flash:SetAllPoints(wedges[i])
+        flash:SetRotation(GRID_ROT)
+        flash:SetBlendMode("ADD")
+        flash:SetVertexColor(1, 1, 1, 0.45)
+        flash:Hide()
+        local anim = flash:CreateAnimationGroup()
+        local fade = anim:CreateAnimation("Alpha")
+        fade:SetFromAlpha(1)
+        fade:SetToAlpha(0)
+        fade:SetDuration(0.35)
+        anim:SetScript("OnFinished", function()
+            flash:Hide()
+        end)
+        flashes[q.name] = { tex = flash, anim = anim }
+    end
+
+    function AZT.FlashQuad(name)
+        local f = flashes[name]
+        if not f or not view:IsShown() then
+            return
+        end
+        f.anim:Stop()
+        f.tex:Show()
+        f.anim:Play()
     end
 
     function AZT.QuadClickSync()

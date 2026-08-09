@@ -204,14 +204,18 @@ end
 -- the press, and nothing can be answered before its wave has happened, so
 -- missing one and tapping twice gets you level again instead of shifting
 -- the whole route. A wave still blank when the echoes start can be filled
--- right up until its own echo plays. Outside a channel it appends, for
--- walking a route in by hand between pulls.
+-- right up until its own echo plays. Outside the pull it appends instead,
+-- for walking a route in by hand between pulls. During the pull a press
+-- with nothing left to answer does nothing at all.
 local function fillSpot(i, q, caught)
     seq[i] = q
     AZT.Log(("SAFESPOT answered %d = %s%s"):format(i, q, caught and " (caught up)" or ""))
     AZT.chat(("safe spot %d: %s"):format(i, AZT.QuadName(q, 14)))
     if AZT.SetSafeQuads then
         AZT.SetSafeQuads(seq, echoIdx > 0 and echoIdx or nil)
+    end
+    if AZT.FlashQuad then
+        AZT.FlashQuad(q)
     end
 end
 
@@ -233,7 +237,9 @@ function Safe.CaptureQuadrant(q)
         fillSpot(limit, q)
         return
     end
-    if echoIdx > 0 then
+    -- mid-pull a stray press must never grow the route, the gap between the
+    -- channel and the first echo would happily take an append otherwise
+    if armed or echoIdx > 0 then
         return
     end
     if #seq >= MAX_WAVES then
