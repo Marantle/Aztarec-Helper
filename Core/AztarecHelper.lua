@@ -5,7 +5,7 @@
 
 local ADDON, AZT = ...
 
-AZT.VERSION = "1.3.8"
+AZT.VERSION = "1.3.9"
 
 -- Venomfall Deeps boss room, measured on PTR 12.1.0.
 -- UnitPosition returns (a, b, z, inst). The addon prints them as world=b,a.
@@ -38,6 +38,7 @@ local DEFAULTS = {
     arrowColor = "gold", -- key into AZT.ARROW_COLORS
     arrowCompass = false, -- arrow points the way the room view does, no spoken cues
     cues = true, -- spoken cues during the echoes
+    keysMark = false, -- answer keys also mark the player for the party
     cueChannel = "Master", -- sound channel the calls play through
     quadIcons = {}, -- world marker icon per quarter letter, board display only
     log = {}, -- persisted log lines (survive /reload and crashes)
@@ -72,7 +73,9 @@ f:SetScript("OnEvent", function(_, event, ...)
         if not AztarecHelperDB.quadIconsSeeded then
             AztarecHelperDB.quadIconsSeeded = true
             if next(AztarecHelperDB.quadIcons) == nil then
-                AztarecHelperDB.quadIcons = { N = 4, E = 6, S = 7, W = 2 }
+                for q, i in pairs(AZT.MARK_SEED) do
+                    AztarecHelperDB.quadIcons[q] = i
+                end
             end
         end
         -- 1.3.0 removed everything position-fed: auto sampling, the manual
@@ -121,6 +124,10 @@ function AZT.Log() end
 
 -- world marker flags carry the same eight symbols as the raid target icons
 AZT.MARK_TEX = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_%d"
+
+-- the icons a fresh install wears: triangle north, square east, cross south,
+-- circle west. The seeding and the mark keys' letter fallback both read this
+AZT.MARK_SEED = { N = 4, E = 6, S = 7, W = 2 }
 
 -- a quarter as the player sees it: the marker icon they picked for it, or
 -- the compass letter. Everything that names a quarter goes through here so

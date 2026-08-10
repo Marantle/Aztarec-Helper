@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.9
+- Answer keys mark me, a new option: each press of a quarter key also puts that quarter's marker on you, through the game's own target marker system, so your party can follow your moves with no addon of their own. It uses whatever icon the quarter wears on the room view and only arms inside the delve. The wiring locks when a fight starts, so the sermon answers set markers as well as the echo moves, note this is not automatic, just something to help you mark yourself for your friends
+- The settings panel grew into sections and a second column. The windows and the spoken cues sit on the left while the quarter keys, the party option, the window locks and the route buttons sit on the right
+- When a cue cannot play, the message now names the sound channel it tried, since a channel disabled in the sound options is the usual reason. And switching channels warns anew instead of staying quiet for the rest of the session
+
 ## 1.3.8
 - The quarter marker menus work on a locked room view now, out of combat. The lock still blocks dragging and still lets fight clicks pass through, it just stopped taking the icon menus down with it
 

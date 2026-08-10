@@ -75,6 +75,8 @@ read_globals = {
     "GetBindingText",
     "SetBinding",
     "SaveBindings",
+    "SetOverrideBindingClick",
+    "ClearOverrideBindings",
     "GetCurrentBindingSet",
     "IsAltKeyDown",
     "IsControlKeyDown",
@@ -85,4 +87,15 @@ read_globals = {
     "CLASS_SORT_ORDER",
     "Minimap",
     "GetCursorPosition",
+}
+
+-- the dev probes poke APIs the shipped files never touch
+files["Dev/DevTools.lua"] = {
+    read_globals = {
+        "Enum",
+        "secretwrap",
+        "C_VoiceChat",
+        "SetRaidTarget",
+        "GetRaidTargetIndex",
+    },
 }

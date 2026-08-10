@@ -24,11 +24,13 @@ local function labelMenu(owner, qname)
         root:CreateButton("Letter " .. qname, function()
             AztarecHelperDB.quadIcons[qname] = nil
             AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
+            AZT.MarkKeysSync()
         end)
         for i, mark in ipairs(MARKS) do
             root:CreateButton(("|T" .. AZT.MARK_TEX .. ":16|t %s"):format(i, mark), function()
                 AztarecHelperDB.quadIcons[qname] = i
                 AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
+                AZT.MarkKeysSync()
             end)
         end
     end)

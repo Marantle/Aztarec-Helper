@@ -39,10 +39,13 @@ local warned = false
 -- shared by the live calls and the test buttons in the options panel.
 -- Master by default so the calls stay audible with sound efects turned down
 function AZT.PlayCue(turn)
-    local ok, willPlay = pcall(PlaySoundFile, SOUNDS[turn], AztarecHelperDB.cueChannel or "Master")
+    local chan = AztarecHelperDB.cueChannel or "Master"
+    local ok, willPlay = pcall(PlaySoundFile, SOUNDS[turn], chan)
     if not (ok and willPlay) and not warned then
         warned = true
-        AZT.chat("cue sound failed to play: " .. SOUNDS[turn])
+        AZT.chat(
+            ("cue '%s' failed to play on %s - check that channel is enabled in the sound options"):format(turn, chan)
+        )
     end
 end
 
@@ -55,6 +58,8 @@ function AZT.CycleCueChannel()
         end
     end
     AztarecHelperDB.cueChannel = CHANNELS[idx % #CHANNELS + 1]
+    -- a fresh channel deserves a fresh warning if it fails too
+    warned = false
     return AztarecHelperDB.cueChannel
 end
 
