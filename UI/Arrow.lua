@@ -123,7 +123,7 @@ local function buildArrow()
         elapsed = 0
         local w = AZT.Wave
         if w and w.phase == "record" then
-            -- nothing to call during the Sermon, so it points at your feet.
+            -- no move to show during the Sermon, so it points at your feet.
             showPointer(easeTo(math.pi), 1, AZT.ArrowColor().rgb)
             setMark(nil)
             return
@@ -135,7 +135,7 @@ local function buildArrow()
         local list = AZT.safeList
         local blank = not (w and (w.phase == "echo" or w.phase == "replay") and w.idx > 0 and list)
         -- an echo this far overdue means the run stopped, so stop pointing
-        -- instead of holding a call nothing is coming for
+        -- instead of holding a move nothing is coming for
         if not blank and w.gap and w.startedAt then
             local okG, since = pcall(function()
                 return GetTime() - w.startedAt
@@ -175,9 +175,14 @@ function AZT.ArrowSync()
     -- grey and grabbable around the delve out of combat. Once anything says
     -- a fight is on (regen flag, lockdown API, armed encounter) it only
     -- exists while the memory game itself is running.
-    local fighting = AZT.inCombat or InCombatLockdown() or (AZT.Safe and AZT.Safe.IsArmed and AZT.Safe.IsArmed())
+    local fighting = AZT.Fighting()
     local idleParked = AZT.InDelve() and not fighting
-    local on = AztarecHelperDB.arrow and (live or recording or idleParked)
+    -- a follower's route is sealed calls with no turn to point, so the whole
+    -- arrow locks off while follower mode is on. The player's own arrow
+    -- setting stays stored for when they stop following
+    local on = AztarecHelperDB.arrow
+        and (live or recording or idleParked)
+        and not (AZT.Follow and AZT.Follow.Suppress())
     if not arrowFrame then
         if not on then
             return

@@ -60,6 +60,16 @@ local function buildWave()
         if remain then
             msg = msg .. (" - %.1f"):format(remain)
         end
+        local alpha = 1
+        if remain and remain < FLASH_UNDER then
+            alpha = 0.55 + 0.45 * math.abs(math.sin(GetTime() * FLASH_HZ * math.pi))
+        end
+        -- a followed fight renders the leader's calls instead of the local
+        -- quarters. This branch has to come first: the follower's own route
+        -- is all "?" placeholders, not empty
+        if AZT.Follow and AZT.Follow.DecorateWaveLine(text, msg, alpha) then
+            return
+        end
         -- during the echoes the box leads with where to be and trails with
         -- where next, in whatever the player picked for those quarters. The
         -- next one is smaller since it is not the one being counted down.
@@ -69,10 +79,6 @@ local function buildWave()
             if nextNow then
                 msg = msg .. "  >  " .. AZT.QuadName(nextNow, 16)
             end
-        end
-        local alpha = 1
-        if remain and remain < FLASH_UNDER then
-            alpha = 0.55 + 0.45 * math.abs(math.sin(GetTime() * FLASH_HZ * math.pi))
         end
         text:SetText(msg)
         text:SetTextColor(1, 1, 1, alpha)
@@ -84,8 +90,7 @@ end
 -- way in combat when it has nothing to say.
 function AZT.WaveSync()
     local live = AZT.Wave and AZT.Wave.phase ~= nil
-    local fighting = AZT.inCombat or InCombatLockdown() or (AZT.Safe and AZT.Safe.IsArmed and AZT.Safe.IsArmed())
-    local idleParked = AZT.InDelve() and not fighting
+    local idleParked = AZT.InDelve() and not AZT.Fighting()
     local on = AztarecHelperDB.waveText and (live or idleParked)
     if not waveFrame then
         if not on then

@@ -65,6 +65,8 @@ read_globals = {
     -- Group
     "IsInGroup",
     "IsInRaid",
+    "UnitIsGroupLeader",
+    "UnitIsPlayer",
     "GetRaidRosterInfo",
     "LE_PARTY_CATEGORY_INSTANCE",
     -- Combat / encounter

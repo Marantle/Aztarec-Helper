@@ -5,7 +5,7 @@
 
 local ADDON, AZT = ...
 
-AZT.VERSION = "1.3.9"
+AZT.VERSION = "1.4.0"
 
 -- Venomfall Deeps boss room, measured on PTR 12.1.0.
 -- UnitPosition returns (a, b, z, inst). The addon prints them as world=b,a.
@@ -39,8 +39,11 @@ local DEFAULTS = {
     arrowCompass = false, -- arrow points the way the room view does, no spoken cues
     cues = true, -- spoken cues during the echoes
     keysMark = false, -- answer keys also mark the player for the party
+    callRoute = false, -- leader: answer keys also call the quarter's number in party chat
+    follow = false, -- follower: collect the leader's calls and show the route
     cueChannel = "Master", -- sound channel the calls play through
     quadIcons = {}, -- world marker icon per quarter letter, board display only
+    anywhere = false, -- escape hatch: treat every zone as the delve
     log = {}, -- persisted log lines (survive /reload and crashes)
 }
 
@@ -108,8 +111,12 @@ end
 AZT.chat = chat
 
 -- Are we in the nemesis delve? The instance map id is the primary signal.
--- The zone name is the fallback in case Blizzard renumbers it for live.
+-- The zone name is the fallback in case Blizzard renumbers it for live, and
+-- /azt anywhere overrides the whole question for the day both signals break.
 function AZT.InDelve()
+    if AztarecHelperDB and AztarecHelperDB.anywhere then
+        return true
+    end
     local ok, _, _, _, _, _, _, _, instMapID = pcall(GetInstanceInfo)
     if ok and instMapID == AZT.ROOM.instanceMapID then
         return true
@@ -122,6 +129,27 @@ end
 -- this with the real recorder. Shipped builds silently drop log lines.
 function AZT.Log() end
 
+-- is a fight on by any signal: the regen flag, the lockdown API or an
+-- armed encounter. Every parked window hides behind this one answer
+function AZT.Fighting()
+    return AZT.inCombat or InCombatLockdown() or (AZT.Safe and AZT.Safe.IsArmed and AZT.Safe.IsArmed()) or false
+end
+
+-- a delve companion NPC counts as a group to IsInGroup, so party play asks
+-- the roster for an actual player before believing it
+function AZT.InPlayerParty()
+    if not IsInGroup() or IsInRaid() then
+        return false
+    end
+    for i = 1, 4 do
+        local unit = "party" .. i
+        if UnitExists(unit) and UnitIsPlayer(unit) then
+            return true
+        end
+    end
+    return false
+end
+
 -- world marker flags carry the same eight symbols as the raid target icons
 AZT.MARK_TEX = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_%d"
 
@@ -129,11 +157,12 @@ AZT.MARK_TEX = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_%d"
 -- circle west. The seeding and the mark keys' letter fallback both read this
 AZT.MARK_SEED = { N = 4, E = 6, S = 7, W = 2 }
 
--- a quarter as the player sees it: the marker icon they picked for it, or
--- the compass letter. Everything that names a quarter goes through here so
--- the board, the arrow and the chat lines all speak the same language.
+-- a quarter as the player sees it: the party leader's icon when one is
+-- synced over, else the marker icon they picked for it or the compass
+-- letter. Everything that names a quarter goes through here so the board,
+-- the arrow and the chat lines all speak the same language.
 function AZT.QuadName(q, size)
-    local idx = AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q]
+    local idx = (AZT.Follow and AZT.Follow.IconFor(q)) or (AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q])
     if idx then
         return ("|T" .. AZT.MARK_TEX .. ":%d|t"):format(idx, size or 14)
     end
@@ -145,10 +174,13 @@ local HELP = {
     "/azt map           - toggle the map art backdrop behind the room view",
     "/azt n|e|s|w       - answer a wave with that quarter (bindable keys too)",
     "/azt replay        - practice: replay the last recorded route with real timings",
-    "/azt cue           - toggle the spoken cues during the echoes (beta)",
+    "/azt cue           - toggle the spoken cues during the echoes",
+    "/azt call          - toggle calling the route for the party while you lead",
+    "/azt follow        - toggle following the leader's calls",
     "/azt review        - what the last pull recorded and where you died",
     "/azt reset         - clear the recorded route",
     "/azt options       - open the settings panel",
+    "/azt anywhere      - treat where you stand as the delve, for when detection breaks",
     "/azt help          - how the recording and the callouts work",
     "/azt version       - addon version",
 }
@@ -168,9 +200,50 @@ SlashCmdList["AZT"] = function(msg)
         AZT.Safe.CaptureQuadrant(cmd:upper())
     elseif cmd == "replay" then
         AZT.Safe.Replay()
+    elseif cmd == "anywhere" then
+        AztarecHelperDB.anywhere = not AztarecHelperDB.anywhere
+        -- everything zone gated re-decides right now instead of waiting for
+        -- the next zone change
+        if AZT.Safe and AZT.Safe.ZoneSync then
+            AZT.Safe.ZoneSync()
+        end
+        AZT.MarkKeysSync()
+        if AZT.Follow then
+            AZT.Follow.Sync()
+        end
+        if AZT.RoomZoneSync then
+            AZT.RoomZoneSync()
+        end
+        if AztarecHelperDB.anywhere then
+            chat("treating every zone as the delve - costs idle work, /azt anywhere again to turn off")
+        else
+            chat("back to delve detection")
+        end
     elseif cmd == "cue" then
         AztarecHelperDB.cues = not AztarecHelperDB.cues
         chat("spoken cues: " .. (AztarecHelperDB.cues and "ON" or "OFF"))
+    elseif cmd == "call" then
+        -- calling belongs to the leader alone. The command refuses
+        -- anyone else so two routes never fight over the boards
+        if not AztarecHelperDB.callRoute and not (AZT.InPlayerParty() and UnitIsGroupLeader("player")) then
+            chat("route calling is for the party leader - take the lead first")
+        else
+            AZT.SetCallRoute(not AztarecHelperDB.callRoute)
+            if AztarecHelperDB.callRoute then
+                chat(
+                    "route calling: ON - ask the party to keep chat quiet in the fight, stray lines land on their boards"
+                )
+            else
+                chat("route calling: OFF")
+            end
+        end
+    elseif cmd == "follow" then
+        if not AztarecHelperDB.follow and AZT.InPlayerParty() and UnitIsGroupLeader("player") then
+            chat("following is for party members - you lead, call the route instead")
+        else
+            AZT.SetFollow(not AztarecHelperDB.follow)
+            chat("following the leader: " .. (AztarecHelperDB.follow and "ON" or "OFF"))
+        end
     elseif cmd == "review" then
         AZT.Safe.Review()
     elseif cmd == "reset" then

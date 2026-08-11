@@ -67,7 +67,9 @@ local function addCheck(label, tip, get, set)
     refreshers[#refreshers + 1] = function()
         cb:SetChecked(get())
     end
+    cb.label = fs
     cur.y = cur.y - 30
+    return cb
 end
 
 local function addAction(label, handler, tip)
@@ -82,6 +84,30 @@ local function addAction(label, handler, tip)
     cur.y = cur.y - 28
     return btn
 end
+
+local function enableLook(w, on)
+    w:SetEnabled(on)
+    if w.label then
+        if on then
+            w.label:SetTextColor(1, 0.82, 0)
+        else
+            w.label:SetTextColor(0.5, 0.5, 0.5)
+        end
+    end
+end
+
+-- follower mode owns these widgets: the route arrives as sealed calls with
+-- no turn in them, so the arrow and the voice have nothing true to say and
+-- their toggles lock off while following is in effect. The stored settings
+-- come back untouched when it stops
+local followGated = {}
+local function applyFollowGate()
+    local locked = AZT.Follow and AZT.Follow.Suppress()
+    for _, w in ipairs(followGated) do
+        enableLook(w, not locked)
+    end
+end
+refreshers[#refreshers + 1] = applyFollowGate
 
 -- Key capture machinery for the quarter key rows, ahead of the layout so
 -- the rows can use it. The capture lives on its own trap frame that only
@@ -250,13 +276,13 @@ end, function(v)
     AZT.WaveSync()
 end)
 
-addCheck(
+followGated[#followGated + 1] = addCheck(
     "Safe-spot arrow",
     "An arrow that shows the move for each echo, as if you were facing the boss in the middle,"
         .. " so up means straight through him and down means stay where you are."
         .. " It sits dimmed in the delve before the pull so you can drag it into place.",
     function()
-        return AztarecHelperDB.arrow
+        return AztarecHelperDB.arrow and not AztarecHelperDB.follow
     end,
     function(v)
         AztarecHelperDB.arrow = v
@@ -280,15 +306,16 @@ end, "The color the arrow draws in during the echoes. Gold leaves the artwork as
 refreshers[#refreshers + 1] = function()
     colorBtn:SetText("Arrow: " .. AZT.ArrowColor().label)
 end
+followGated[#followGated + 1] = colorBtn
 
-addCheck(
+followGated[#followGated + 1] = addCheck(
     "Compass arrow",
     "Off is the relative arrow: the move to make as if you were facing the boss, and the voice calls the"
         .. " same move. On is the compass arrow: it points the way the room view points and carries that"
         .. " quarter's marker inside it. The spoken cues keep talking as if you face the boss either way,"
         .. " so turn them off below if the two readings mix badly for you.",
     function()
-        return AztarecHelperDB.arrowCompass
+        return AztarecHelperDB.arrowCompass and not AztarecHelperDB.follow
     end,
     function(v)
         AztarecHelperDB.arrowCompass = v
@@ -303,12 +330,12 @@ addCheck(
 
 section("Spoken cues")
 
-addCheck(
-    "Spoken cues (beta)",
-    "Plays a short call for each wave, forward, left, right or stay."
-        .. " The calls assume you are facing the boss in the middle of the room.",
+followGated[#followGated + 1] = addCheck(
+    "Spoken cues",
+    "Plays a short cue for each wave, forward, left, right or stay."
+        .. " The cues assume you are facing the boss in the middle of the room.",
     function()
-        return AztarecHelperDB.cues
+        return AztarecHelperDB.cues and not AztarecHelperDB.follow
     end,
     function(v)
         AztarecHelperDB.cues = v
@@ -350,14 +377,14 @@ end)
 cueChanBtn:SetSize(150, 22)
 addTip(
     cueChanBtn,
-    "The sound channel the calls play through. That channel's volume slider decides how loud they are."
+    "The sound channel the cues play through. That channel's volume slider decides how loud they are."
         .. " Master stays audible even with effects turned down."
 )
 refreshers[#refreshers + 1] = function()
     cueChanBtn:SetText("Cues: " .. (AztarecHelperDB.cueChannel or "Master"))
 end
 
--- volume for the channel the calls play through. This is the game's own
+-- volume for the channel the cues play through. This is the game's own
 -- slider for that channel, not a private one, so what it shows is what the
 -- sound options show. Hand-built rather than OptionsSliderTemplate, which
 -- Blizzard has reworked before.
@@ -411,7 +438,7 @@ volSlider:SetScript("OnValueChanged", function(_, v)
 end)
 addTip(
     volSlider,
-    "How loud the calls are. This is the game's own volume for that channel,"
+    "How loud the cues are. This is the game's own volume for that channel,"
         .. " so moving it here moves it in the sound options too."
 )
 
@@ -435,8 +462,14 @@ volWatch:SetScript("OnEvent", function()
     end
 end)
 
+-- lives on the left since the right column runs deep with the party rows
+cur.y = cur.y - 24
+addAction("Updates", function()
+    AZT.ShowNotice()
+end)
+
 local ver = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-ver:SetPoint("TOPLEFT", 16, cur.y - 24)
+ver:SetPoint("TOPLEFT", 16, cur.y - 4)
 ver:SetTextColor(0.7, 0.7, 0.7)
 ver:SetText("v" .. AZT.VERSION .. ", /azt for the command list")
 
@@ -472,6 +505,52 @@ addCheck(
     end
 )
 
+local callCb = addCheck(
+    "Call the route (leader)",
+    "While you lead a party in the delve, each answer key press also says that quarter's marker"
+        .. " number in party chat, through the game's own macro system, so followers with the addon"
+        .. " see your route as you record it. The wiring locks when a fight starts, so a leadership"
+        .. " change mid pull waits for the pull to end. One role at a time, turning this on turns"
+        .. " following off.",
+    function()
+        return AztarecHelperDB.callRoute
+    end,
+    function(v)
+        AZT.SetCallRoute(v)
+        for _, fn in ipairs(refreshers) do
+            fn()
+        end
+    end
+)
+
+local followCb = addCheck(
+    "Follow the leader",
+    "Shows the leader's route calls as marker icons, on a board of their own and on the wave"
+        .. " countdown, timed by the boss like always. The addon can show the calls but never read"
+        .. " them, so the arrow and the spoken cues lock off while this is on, and party chat"
+        .. " during the sermon lands on the board. The board parks in the delve while this is on,"
+        .. " so you can drag it into place. One role at a time, turning this on turns calling off.",
+    function()
+        return AztarecHelperDB.follow
+    end,
+    function(v)
+        AZT.SetFollow(v)
+        for _, fn in ipairs(refreshers) do
+            fn()
+        end
+    end
+)
+
+-- the roles come from leadership, so the boxes track it: only a party
+-- leader can turn calling on and a party leader cannot follow. A toggle
+-- that is already on stays clickable, going off is always allowed
+local function applyRoleGate()
+    local leading = AZT.InPlayerParty() and UnitIsGroupLeader("player")
+    enableLook(callCb, leading or AztarecHelperDB.callRoute)
+    enableLook(followCb, not leading or AztarecHelperDB.follow)
+end
+refreshers[#refreshers + 1] = applyRoleGate
+
 section("Locks")
 
 -- the three windows share one lock story, so the rows come off a list
@@ -480,6 +559,7 @@ local LOCK_TIP =
 for _, w in ipairs({
     { key = "arrow", label = "Lock the arrow" },
     { key = "wave", label = "Lock the countdown" },
+    { key = "follow", label = "Lock the route board" },
     {
         key = "room",
         label = "Lock the room view",
@@ -517,10 +597,6 @@ addAction("Reset route", function()
     AZT.chat("recorded route cleared")
 end)
 
-addAction("Updates", function()
-    AZT.ShowNotice()
-end)
-
 local category = Settings.RegisterCanvasLayoutCategory(panel, panel.name)
 Settings.RegisterAddOnCategory(category)
 
@@ -530,4 +606,14 @@ function AZT.OpenOptions()
         return
     end
     Settings.OpenToCategory(category:GetID())
+end
+
+-- lead can change hands while the panel is open, Follow.Sync pokes this so
+-- the role gates keep up
+function AZT.RefreshOptions()
+    if panel:IsShown() then
+        for _, fn in ipairs(refreshers) do
+            fn()
+        end
+    end
 end

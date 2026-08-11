@@ -36,8 +36,8 @@ end
 
 local warned = false
 
--- shared by the live calls and the test buttons in the options panel.
--- Master by default so the calls stay audible with sound efects turned down
+-- shared by the live cues and the test buttons in the options panel.
+-- Master by default so the cues stay audible with sound efects turned down
 function AZT.PlayCue(turn)
     local chan = AztarecHelperDB.cueChannel or "Master"
     local ok, willPlay = pcall(PlaySoundFile, SOUNDS[turn], chan)
@@ -66,7 +66,7 @@ end
 local CUE_LEAD = 0.5 -- how long before the wave lands the word plays
 
 local function speak(safeQuad, fromQuad)
-    -- an unknown step in the route means silence, never a wrong call
+    -- an unknown step in the route means silence, never a wrong cue
     local turn = AZT.Safe.TurnFromTo(fromQuad, safeQuad)
     if not turn then
         return
@@ -79,7 +79,8 @@ end
 -- hit, so it arrives when moving is due. With no readable landing time it
 -- speaks at once rather than never.
 function AZT.Cue(safeQuad, hitAt, fromQuad)
-    if not AztarecHelperDB.cues then
+    -- following locks the voice off, since the calls carry no turn to speak
+    if not AztarecHelperDB.cues or (AZT.Follow and AZT.Follow.Suppress()) then
         return
     end
     local delay

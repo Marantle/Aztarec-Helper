@@ -16,12 +16,12 @@ local NERF = "Since a 12.1 build the game hands out no coordinates inside this d
     .. "Nothing can read where you stand in there, this addon included, so automatic "
     .. "recording and the dot that showed you on the map are out.\n\n"
     .. "Recording is manual now. During the Sermon, press a quarter key or click the quarter "
-    .. "on the room view for the quarter you run to, one press per wave, and the echo "
-    .. "callouts play your recording back. Waves you skip show as unknown.\n\n"
+    .. "on the room view for the quarter you run to, one press per wave, and the "
+    .. "echoes play your recording back. Waves you skip show as unknown.\n\n"
     .. "The Instructions button on the room view has the rest.\n\n"
     .. "Also, sorry for shouting in your ear with the new spoken cues, I wanted to use "
     .. "real voice instead of TTS for some personality. Whichever sound channel you point "
-    .. "the calls at has a volume slider in the settings, and /azt cue shuts me up for good.\n\n"
+    .. "the cues at has a volume slider in the settings, and /azt cue shuts me up for good.\n\n"
     .. "Check back on August 19th. This will still be the best addon for this fight.\n\n"
     .. "Fabled Let Me Solo Him: Azta'rec wants him dead on Tier ?? with nobody else in "
     .. "your party, inside the first week of Midnight Season 2. The memory game is the "
@@ -163,6 +163,52 @@ function AZT.ShowCompassCueAsk()
             AZT.chat("spoken cues: OFF")
         end,
         rightText = "Keep the cues",
+        right = function() end,
+    })
+end
+
+-- Party play, offered when the role calls for it: the leader hears about
+-- calling, everyone else about following. Core/Follow.lua decides when to
+-- show these, once per stint in a role, and the options keep both
+-- changeable at any time.
+local CALL_TITLE = "Call the route for your party?"
+local CALL_TEXT = "You lead this group. With calling on, your answer keys also say each"
+    .. " quarter's marker number in party chat as you record, and party members running"
+    .. " the addon see your route as marker icons on the boss's timing. The keys work"
+    .. " as before otherwise. One ask for the group: keep party chat quiet during the"
+    .. " fight, since stray lines land on the followers' boards as garbage. Declining"
+    .. " keeps the semi automatic mode, where you record and answer for yourself only."
+    .. " Either way you can change your mind under Party in the options."
+
+function AZT.ShowCallAsk()
+    show(CALL_TITLE, CALL_TEXT, {
+        leftText = "Call the route",
+        left = function()
+            AZT.SetCallRoute(true)
+            AZT.chat("route calling: ON while you lead")
+        end,
+        rightText = "Stay semi automatic",
+        right = function() end,
+    })
+end
+
+local FOLLOW_TITLE = "Follow the leader's calls?"
+local FOLLOW_TEXT = "Someone else leads this group. With following on, their route calls show"
+    .. " as marker icons on a board of their own and on the wave countdown, timed by the"
+    .. " boss like always. The addon can show the calls but never read them, so there is"
+    .. " no arrow and no spoken turns while you follow, and any party chat during the"
+    .. " sermon lands on the board. Declining keeps the semi automatic mode, where you"
+    .. " record and answer for yourself like when solo. Either way you can change your"
+    .. " mind under Party in the options."
+
+function AZT.ShowFollowAsk()
+    show(FOLLOW_TITLE, FOLLOW_TEXT, {
+        leftText = "Follow the calls",
+        left = function()
+            AZT.SetFollow(true)
+            AZT.chat("following the leader: ON")
+        end,
+        rightText = "Stay semi automatic",
         right = function() end,
     })
 end

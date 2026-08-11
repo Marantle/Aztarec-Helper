@@ -14,6 +14,12 @@ Then the echoes start and the addon takes over. The room view lights the quarter
 
 Going for **Fabled Let Me Solo Him: Azta'rec**? That one wants him dead on Tier ?? with nobody else in your party, inside the first week of Midnight Season 2. Tier ?? runs up to eight waves in a phase, which is where solo attempts usually end, and remembering that sequence is the one thing this addon does.
 
+## Party play
+
+In a group, the party leader is the only one who has to input the route. Lead, answer the waves like you would solo, and every party member running the addon watches your route land on their own screen: a route board with the markers in order, the current one drawn big, and the same markers on their wave countdown. They input nothing and memorize nothing, they follow. The addon offers each side its role when you group up in the delve, and both switches live under Party in the settings.
+
+Your quarter markers carry over to the group too, so everyone reads the same icons, and the answer keys can put the pressed quarter's marker on you as you go, which lets even friends without the addon just run where you run.
+
 ## Half the automation is gone
 
 Recording used to be automatic. Since a 12.1 build the game hands out no coordinates inside the delve, for every addon alike, so this one cannot see where you stand. That took the automatic recording with it, along with the dot that put you on the map and the warning when you stood in a quarter about to get hit.
@@ -47,6 +53,8 @@ Everything that reads the boss still works. It knows when the Sermon starts, how
 *   `/azt replay` replays the last recorded route, for practice
 *   `/azt review` shows what the last pull recorded and where you died
 *   `/azt cue` toggles the spoken cues
+*   `/azt call` toggles calling the route for your party while you lead
+*   `/azt follow` toggles following the leader's calls
 *   `/azt help` opens the instructions
 *   `/azt reset` clears the recorded route
 *   `/azt options` opens the settings panel

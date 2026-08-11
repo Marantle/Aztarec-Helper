@@ -25,12 +25,14 @@ local function labelMenu(owner, qname)
             AztarecHelperDB.quadIcons[qname] = nil
             AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
             AZT.MarkKeysSync()
+            AZT.Follow.SendIcons()
         end)
         for i, mark in ipairs(MARKS) do
             root:CreateButton(("|T" .. AZT.MARK_TEX .. ":16|t %s"):format(i, mark), function()
                 AztarecHelperDB.quadIcons[qname] = i
                 AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
                 AZT.MarkKeysSync()
+                AZT.Follow.SendIcons()
             end)
         end
     end)
@@ -483,7 +485,8 @@ function AZT.SetSafeQuads(list, activeIdx)
             fs:SetText(disp)
             -- the letters sit back at 0.65 but a chosen marker icon draws
             -- fully opaque, it is the player's own landmark
-            local hasIcon = AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q.name]
+            local hasIcon = (AZT.Follow and AZT.Follow.IconFor(q.name))
+                or (AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q.name])
             fs:SetTextColor(1, 1, 1, hasIcon and 1 or 0.65)
         end
     end
@@ -543,14 +546,9 @@ function AZT.EnsureRoomView()
     end
 end
 
--- auto show/hide on zone change
-local zf = CreateFrame("Frame")
-zf:RegisterEvent("PLAYER_ENTERING_WORLD")
-zf:RegisterEvent("ZONE_CHANGED_NEW_AREA")
--- regen events too since the arrow shows and hides on combat edges
-zf:RegisterEvent("PLAYER_REGEN_DISABLED")
-zf:RegisterEvent("PLAYER_REGEN_ENABLED")
-zf:SetScript("OnEvent", function(_, event)
+-- auto show/hide on zone change. Named and exposed so /azt anywhere can
+-- run the same decision on the spot
+function AZT.RoomZoneSync(event)
     -- own combat flag, kept from the regen edges, so the arrow logic never
     -- depends on how early the lockdown API flips
     if event == "PLAYER_REGEN_DISABLED" then
@@ -590,6 +588,16 @@ zf:SetScript("OnEvent", function(_, event)
     elseif view and view:IsShown() then
         view:Hide()
     end
+end
+
+local zf = CreateFrame("Frame")
+zf:RegisterEvent("PLAYER_ENTERING_WORLD")
+zf:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+-- regen events too since the arrow shows and hides on combat edges
+zf:RegisterEvent("PLAYER_REGEN_DISABLED")
+zf:RegisterEvent("PLAYER_REGEN_ENABLED")
+zf:SetScript("OnEvent", function(_, event)
+    AZT.RoomZoneSync(event)
 end)
 
 --#endregion

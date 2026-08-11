@@ -64,6 +64,9 @@ local function setWave(phase, idx, total, at, startedAt, gap)
     if AZT.QuadClickSync then
         AZT.QuadClickSync()
     end
+    if AZT.FollowSync then
+        AZT.FollowSync()
+    end
 end
 
 local function hitTime(i)
@@ -440,11 +443,6 @@ local function hostileUnit(unit)
 end
 
 local ef = CreateFrame("Frame")
-ef:RegisterEvent("ENCOUNTER_START")
-ef:RegisterEvent("ENCOUNTER_END")
-ef:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
-ef:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
-ef:RegisterEvent("UNIT_SPELLCAST_START")
 ef:SetScript("OnEvent", function(_, event, ...)
     local ok, err = pcall(function(...)
         if event == "ENCOUNTER_START" then
@@ -573,6 +571,38 @@ ef:SetScript("OnEvent", function(_, event, ...)
     if not ok then
         AZT.Log("SAFE_ERR " .. tostring(event) .. ": " .. tostring(err))
     end
+end)
+
+-- The encounter can only happen in the delve, so the cast and encounter
+-- events only exist there. Outside it this file hears nothing at all,
+-- spellcasts included, which otherwise fire on every mob around the player
+local COMBAT_EVENTS = {
+    "ENCOUNTER_START",
+    "ENCOUNTER_END",
+    "UNIT_SPELLCAST_CHANNEL_START",
+    "UNIT_SPELLCAST_CHANNEL_STOP",
+    "UNIT_SPELLCAST_START",
+}
+
+function Safe.ZoneSync()
+    if AZT.InDelve() then
+        for _, e in ipairs(COMBAT_EVENTS) do
+            ef:RegisterEvent(e)
+        end
+    else
+        for _, e in ipairs(COMBAT_EVENTS) do
+            ef:UnregisterEvent(e)
+        end
+        -- PLAYER_DEAD rides the encounter and cannot outlive the delve
+        ef:UnregisterEvent("PLAYER_DEAD")
+    end
+end
+
+local zf = CreateFrame("Frame")
+zf:RegisterEvent("PLAYER_ENTERING_WORLD")
+zf:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+zf:SetScript("OnEvent", function()
+    Safe.ZoneSync()
 end)
 
 --#endregion
