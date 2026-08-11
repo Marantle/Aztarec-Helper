@@ -16,15 +16,18 @@ Going for **Fabled Let Me Solo Him: Azta'rec**? That one wants him dead on Tier 
 
 ## Party play
 
-In a group, the party leader is the only one who has to input the route. Lead, answer the waves like you would solo, and every party member running the addon watches your route land on their own screen: a route board with the markers in order, the current one drawn big, and the same markers on their wave countdown. They input nothing and memorize nothing, they follow. The addon offers each side its role when you group up in the delve, and both switches live under Party in the settings.
+In a group, the party leader in "Leader" mode is the only one who has to record the route with keybinds or click. Leader answers the waves like you would solo, and every party member running the addon in Follower mode watches the chat for communicating which marker is the next safe spot in sequence, the message are just numbers in chat because of addon limitations, so avoid chatting during the boss fight and the Sermon in party chat to not mess it up.
+These numbers are used to show the current safe spot to party members in Follower mode and stepped to next safe spot as the Memory game progresses.
+Due to addon limitations we cannot show the safe spots on the Room View, spoken cues nor the usual Arrow so the tradeoff for party members now having to use the keybinds, is only  having the callers routes board on screen
 
-Your quarter markers carry over to the group too, so everyone reads the same icons, and the answer keys can put the pressed quarter's marker on you as you go, which lets even friends without the addon just run where you run.
+![Caller's route](https://rothirr.wordpress.com/wp-content/uploads/2026/08/callersroute.png)
 
-## Half the automation is gone
+
+## Half automation
 
 Recording used to be automatic. Since a 12.1 build the game hands out no coordinates inside the delve, for every addon alike, so this one cannot see where you stand. That took the automatic recording with it, along with the dot that put you on the map and the warning when you stood in a quarter about to get hit.
 
-Everything that reads the boss still works. It knows when the Sermon starts, how many waves are coming, when each one lands and when every echo fires, all of it measured by hand on the PTR over about thirteen deaths. You supply the one thing it lost, one key per wave, and the rest runs the way it always did.
+Everything that reads the boss still works. It knows when the Sermon starts, how many waves are coming. You supply the things that Blizzard took out, one key per wave or click the safe quarter on Room View, and during the Echos it still tells you where to go, so Echos are automatic and Sermon is manual.
 
 ![The room view in action](https://rothirr.wordpress.com/wp-content/uploads/2026/08/nerfedhelper.webp)
 
@@ -44,9 +47,9 @@ Everything that reads the boss still works. It knows when the Sermon starts, how
 *   Every window drags where you want it and remembers the spot. A small padlock in the corner locks a window in place and lets clicks pass through it. The Preview button in the settings plays three pretend waves through the whole display, so you can watch it work and arrange your layout without pulling the boss first.
 *   A settings panel with the quarter keys bindable in it. Open it with `/azt options`, from the Options button on the room view or from the addon compartment by the minimap.
 
-*A note on lineage: if you have seen another addon do this, the idea started here. The recording and the room view were measured and built in mid-July 2026 and went public in this addon on July 25. The file list on this page is the proof. The other addon for this fight adopted the approach in early August, with credit to this one in its source.*
+*A note on lineage: if you have seen another addon do this, the idea started here. The recording and the room view were measured and built in mid-July 2026 and went public in this addon on July 25.*
 
-## Commands
+## Commands and options
 
 *   `/azt room` toggles the room view (it auto-shows in the delve)
 *   `/azt n`, `/azt e`, `/azt s`, `/azt w` record that quarter for the earliest wave you have not answered (bindable in Key Bindings, macroable)
@@ -59,6 +62,7 @@ Everything that reads the boss still works. It knows when the Sermon starts, how
 *   `/azt reset` clears the recorded route
 *   `/azt options` opens the settings panel
 *   `/azt map` toggles the map art backdrop
+*   `/azt anywhere` treats where you stand as the boss room, in case a patch moves the delve and the addon stops recognizing it
 
 ## Notes
 
