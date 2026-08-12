@@ -8,7 +8,8 @@ local _, AZT = ...
 -- The answer keys doubling as the party signal: each press can put the
 -- pressed quarter's marker on the player, so the group can follow along
 -- without running the addon themselves, and when leading a party it can also
--- call that quarter's marker number in party chat for the follower boards.
+-- call that quarter in party chat for the follower boards, as its marker
+-- number or as a direction word depending on the chosen style.
 -- SetRaidTarget and chat sends from addon code are dead in the fight and
 -- both have to travel Blizzard's secure macro path, so every key is
 -- rerouted onto a hidden secure button whose canned macro does the say and
@@ -26,6 +27,11 @@ local QUAD_CMDS = {
     S = "AZTARECHELPER_MARK_SOUTH",
     W = "AZTARECHELPER_MARK_WEST",
 }
+
+-- the room reads north up everywhere in the addon, so a quarter is a
+-- direction and the call can be the word for it. Followers draw these as the
+-- game's tutorial arrows and their voice can say them as they come
+local QUAD_DIRS = { N = "Up", E = "Right", S = "Down", W = "Left" }
 local owner -- the override bindings hang here, one clear drops them all
 local buttons = {}
 local armed = false
@@ -70,7 +76,10 @@ local function arm()
                 or AZT.MARK_SEED[q]
             local lines = {}
             if callWith then
-                lines[#lines + 1] = ("%s %d"):format(callWith, icon)
+                -- marking always speaks in icon numbers, only the call
+                -- itself changes language
+                local say = AztarecHelperDB.callStyle == "arrows" and QUAD_DIRS[q] or icon
+                lines[#lines + 1] = ("%s %s"):format(callWith, say)
             end
             if AztarecHelperDB.keysMark then
                 lines[#lines + 1] = ("/targetexact %s\n/tm %d\n/targetlasttarget"):format(me, icon)

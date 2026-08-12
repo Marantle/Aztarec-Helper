@@ -27,6 +27,7 @@ read_globals = {
     "C_Map",
     "C_ScenarioInfo",
     "C_Texture",
+    "C_VoiceChat",
     "C_CVar",
     "GetCVar",
     "Settings",
@@ -96,7 +97,6 @@ files["Dev/DevTools.lua"] = {
     read_globals = {
         "Enum",
         "secretwrap",
-        "C_VoiceChat",
         "SetRaidTarget",
         "GetRaidTargetIndex",
     },

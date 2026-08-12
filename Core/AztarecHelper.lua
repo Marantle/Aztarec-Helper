@@ -37,9 +37,11 @@ local DEFAULTS = {
     arrow = true, -- quest-style arrow showing the move for each echo
     arrowColor = "gold", -- key into AZT.ARROW_COLORS
     arrowCompass = false, -- arrow points the way the room view does, no spoken cues
-    cues = true, -- spoken cues during the echoes
+    cues = true, -- the recorded solo cues during your own echoes
+    callVoice = true, -- follower: read the leader's direction calls out loud
     keysMark = false, -- answer keys also mark the player for the party
     callRoute = false, -- leader: answer keys also call the quarter's number in party chat
+    callStyle = "markers", -- what the calls say, "markers" or "arrows"
     follow = false, -- follower: collect the leader's calls and show the route
     cueChannel = "Master", -- sound channel the calls play through
     quadIcons = {}, -- world marker icon per quarter letter, board display only
@@ -174,7 +176,7 @@ local HELP = {
     "/azt map           - toggle the map art backdrop behind the room view",
     "/azt n|e|s|w       - answer a wave with that quarter (bindable keys too)",
     "/azt replay        - practice: replay the last recorded route with real timings",
-    "/azt cue           - toggle the spoken cues during the echoes",
+    "/azt cue           - toggle the solo spoken cues during the echoes",
     "/azt call          - toggle calling the route for the party while you lead",
     "/azt follow        - toggle following the leader's calls",
     "/azt review        - what the last pull recorded and where you died",
@@ -221,7 +223,7 @@ SlashCmdList["AZT"] = function(msg)
         end
     elseif cmd == "cue" then
         AztarecHelperDB.cues = not AztarecHelperDB.cues
-        chat("spoken cues: " .. (AztarecHelperDB.cues and "ON" or "OFF"))
+        chat("solo spoken cues: " .. (AztarecHelperDB.cues and "ON" or "OFF"))
     elseif cmd == "call" then
         -- calling belongs to the leader alone. The command refuses
         -- anyone else so two routes never fight over the boards

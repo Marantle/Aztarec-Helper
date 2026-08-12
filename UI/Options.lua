@@ -7,11 +7,22 @@ local _, AZT = ...
 
 -- Settings panel. Canvas layout because the vertical list can't host the cue
 -- audition row or the key binding column. Two columns of titled sections:
--- the windows and the sound on the left, keys, party and the route handling
--- on the right.
+-- the windows, the sound and the route buttons on the left, keys, party and
+-- the window locks on the right.
 
 local panel = CreateFrame("Frame")
 panel.name = "Azta'rec Helper"
+
+-- The settings canvas hands us a fixed viewport and no scrolling of its own,
+-- so the rows live on a page inside a scroll frame. Everything below anchors
+-- to `page` and only the panel itself talks to the game.
+local scroll = CreateFrame("ScrollFrame", nil, panel)
+scroll:SetPoint("TOPLEFT")
+scroll:SetPoint("BOTTOMRIGHT", -14, 0)
+
+local page = CreateFrame("Frame", nil, scroll)
+page:SetSize(600, 600)
+scroll:SetScrollChild(page)
 
 -- re-read the state every time the panel opens
 local refreshers = {}
@@ -21,24 +32,33 @@ panel:SetScript("OnShow", function()
     end
 end)
 
-local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+local title = page:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
 title:SetText("Azta'rec Helper")
 
 -- the layout cursor. Rows stack downward from it and column() jumps it to
--- the top of the next column
+-- the top of the next column. down() keeps the deepest row of either column,
+-- which is what the page has to be tall enough for
 local cur = { x = 16, y = -50 }
+local deepest = 0
+
+local function down(dy)
+    cur.y = cur.y - dy
+    if -cur.y > deepest then
+        deepest = -cur.y
+    end
+end
 
 local function column(x)
     cur.x, cur.y = x, -50
 end
 
 local function section(name)
-    cur.y = cur.y - 6
-    local fs = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    down(6)
+    local fs = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     fs:SetPoint("TOPLEFT", cur.x, cur.y)
     fs:SetText(name)
-    cur.y = cur.y - 22
+    down(22)
 end
 
 local function addTip(widget, tip)
@@ -54,10 +74,10 @@ local function addTip(widget, tip)
 end
 
 local function addCheck(label, tip, get, set)
-    local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+    local cb = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
     cb:SetSize(26, 26)
     cb:SetPoint("TOPLEFT", cur.x, cur.y)
-    local fs = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local fs = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     fs:SetPoint("LEFT", cb, "RIGHT", 4, 0)
     fs:SetText(label)
     cb:SetScript("OnClick", function(btn)
@@ -68,12 +88,12 @@ local function addCheck(label, tip, get, set)
         cb:SetChecked(get())
     end
     cb.label = fs
-    cur.y = cur.y - 30
+    down(30)
     return cb
 end
 
 local function addAction(label, handler, tip)
-    local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local btn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     btn:SetSize(170, 22)
     btn:SetPoint("TOPLEFT", cur.x, cur.y)
     btn:SetText(label)
@@ -81,7 +101,7 @@ local function addAction(label, handler, tip)
     if tip then
         addTip(btn, tip)
     end
-    cur.y = cur.y - 28
+    down(28)
     return btn
 end
 
@@ -97,9 +117,9 @@ local function enableLook(w, on)
 end
 
 -- follower mode owns these widgets: the route arrives as sealed calls with
--- no turn in them, so the arrow and the voice have nothing true to say and
--- their toggles lock off while following is in effect. The stored settings
--- come back untouched when it stops
+-- no turn in them, so the arrow has nothing true to point at and its toggles
+-- lock off while following is in effect. The stored settings come back
+-- untouched when it stops
 local followGated = {}
 local function applyFollowGate()
     local locked = AZT.Follow and AZT.Follow.Suppress()
@@ -207,10 +227,10 @@ bindWatch:SetScript("OnEvent", function(_, event)
 end)
 
 local function addBindRow(label, cmd)
-    local fs = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local fs = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     fs:SetPoint("TOPLEFT", cur.x, cur.y - 5)
     fs:SetText(label)
-    local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local btn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     btn:SetSize(120, 22)
     btn:SetPoint("TOPLEFT", cur.x + 130, cur.y)
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -236,7 +256,7 @@ local function addBindRow(label, cmd)
     refreshers[#refreshers + 1] = function()
         btn:SetText(keyText(cmd))
     end
-    cur.y = cur.y - 26
+    down(26)
 end
 
 -- Left column: everything the addon draws
@@ -330,12 +350,14 @@ followGated[#followGated + 1] = addCheck(
 
 section("Spoken cues")
 
-followGated[#followGated + 1] = addCheck(
-    "Spoken cues",
-    "Plays a short cue for each wave, forward, left, right or stay."
-        .. " The cues assume you are facing the boss in the middle of the room.",
+addCheck(
+    "Solo spoken cues",
+    "Plays a short cue for each wave, forward, left, right or stay, off the route you recorded"
+        .. " yourself. The cues assume you are facing the boss in the middle of the room."
+        .. " Following someone else's calls has no turn in it to speak, so these stay quiet"
+        .. " then and the Party section has the voice for that.",
     function()
-        return AztarecHelperDB.cues and not AztarecHelperDB.follow
+        return AztarecHelperDB.cues
     end,
     function(v)
         AztarecHelperDB.cues = v
@@ -346,7 +368,7 @@ followGated[#followGated + 1] = addCheck(
 -- out the way the words mean: forward up top, left and right on their
 -- sides, stay at the bottom
 local function cueBtn(dir, x, y)
-    local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local btn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     btn:SetSize(70, 22)
     btn:SetPoint("TOPLEFT", x, y)
     btn:SetText(dir:sub(1, 1):upper() .. dir:sub(2))
@@ -361,10 +383,10 @@ local fwdBtn = cueBtn("forward", midX, cur.y)
 cueBtn("left", cur.x + 10, cur.y - 24)
 cueBtn("right", midX + 74, cur.y - 24)
 cueBtn("stay", midX, cur.y - 48)
-local cueLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+local cueLabel = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 cueLabel:SetPoint("CENTER", fwdBtn, "CENTER", 0, -24)
 cueLabel:SetText("Test cues")
-cur.y = cur.y - 76
+down(76)
 
 local chanY = cur.y
 local refreshVol
@@ -389,7 +411,7 @@ end
 -- sound options show. Hand-built rather than OptionsSliderTemplate, which
 -- Blizzard has reworked before.
 local VOL_W = 130
-local volSlider = CreateFrame("Slider", nil, panel)
+local volSlider = CreateFrame("Slider", nil, page)
 volSlider:SetSize(VOL_W, 16)
 volSlider:SetPoint("TOPLEFT", 176, chanY - 3)
 volSlider:SetOrientation("HORIZONTAL")
@@ -414,7 +436,7 @@ volSlider:GetThumbTexture():SetSize(14, 20)
 
 -- under the slider rather than beside it, since beside would reach into
 -- the right column and strand the number under someone else's section
-local volText = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+local volText = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 volText:SetPoint("TOPLEFT", volSlider, "BOTTOMLEFT", 0, -4)
 
 local function paintVol(v)
@@ -462,18 +484,33 @@ volWatch:SetScript("OnEvent", function()
     end
 end)
 
--- lives on the left since the right column runs deep with the party rows
-cur.y = cur.y - 24
-addAction("Updates", function()
-    AZT.ShowNotice()
+-- the route buttons live on the left, the party rows run the right column
+-- deep enough as it is
+section("Route")
+
+addAction(
+    "Preview the memory game",
+    function()
+        AZT.Safe.PreviewReplay()
+    end,
+    "Plays three pretend waves through the room view, the countdown and the arrow, the way a real"
+        .. " echo phase looks. Click again to stop it early."
+)
+
+addAction("Replay last pull", function()
+    AZT.Safe.Replay()
 end)
 
-local ver = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-ver:SetPoint("TOPLEFT", 16, cur.y - 4)
-ver:SetTextColor(0.7, 0.7, 0.7)
-ver:SetText("v" .. AZT.VERSION .. ", /azt for the command list")
+addAction("Review last pull", function()
+    AZT.Safe.Review()
+end)
 
--- Right column: the keys, what the party sees and the route handling
+addAction("Reset route", function()
+    AZT.Safe.Reset()
+    AZT.chat("recorded route cleared")
+end)
+
+-- Right column: the keys, what the party sees and the window locks
 
 column(330)
 
@@ -523,13 +560,27 @@ local callCb = addCheck(
     end
 )
 
+addCheck(
+    "Call directions, not markers",
+    "Changes what your calls say. Markers name the quarter's own icon by number, directions say"
+        .. " Up, Right, Down or Left with the room read north up like the room view draws it."
+        .. " Followers draw directions as arrows and their voice reads them out, and the words"
+        .. " mean something to party members without the addon too.",
+    function()
+        return AztarecHelperDB.callStyle == "arrows"
+    end,
+    function(v)
+        AZT.SetCallStyle(v and "arrows" or "markers")
+    end
+)
+
 local followCb = addCheck(
     "Follow the leader",
-    "Shows the leader's route calls as marker icons, on a board of their own and on the wave"
-        .. " countdown, timed by the boss like always. The addon can show the calls but never read"
-        .. " them, so the arrow and the spoken cues lock off while this is on, and party chat"
-        .. " during the sermon lands on the board. The board parks in the delve while this is on,"
-        .. " so you can drag it into place. One role at a time, turning this on turns calling off.",
+    "Shows the leader's route calls on a board of their own and on the wave countdown, timed by"
+        .. " the boss like always. The addon can show the calls but never read them, so the arrow"
+        .. " locks off while this is on and party chat during the sermon lands on the board. The"
+        .. " board parks in the delve while this is on, so you can drag it into place. One role"
+        .. " at a time, turning this on turns calling off.",
     function()
         return AztarecHelperDB.follow
     end,
@@ -538,6 +589,19 @@ local followCb = addCheck(
         for _, fn in ipairs(refreshers) do
             fn()
         end
+    end
+)
+
+addCheck(
+    "Speak the leader's calls",
+    "Reads each call out loud as its echo comes up, in the game's own text to speech voice."
+        .. " It waits on the leader: they have to be calling directions rather than markers,"
+        .. " since a voice reading a marker number out tells you nothing about where to run.",
+    function()
+        return AztarecHelperDB.callVoice
+    end,
+    function(v)
+        AztarecHelperDB.callVoice = v
     end
 )
 
@@ -573,29 +637,65 @@ for _, w in ipairs({
     end)
 end
 
-section("Route")
-
-addAction(
-    "Preview the memory game",
-    function()
-        AZT.Safe.PreviewReplay()
-    end,
-    "Plays three pretend waves through the room view, the countdown and the arrow, the way a real"
-        .. " echo phase looks. Click again to stop it early."
-)
-
-addAction("Replay last pull", function()
-    AZT.Safe.Replay()
+down(24)
+addAction("Updates", function()
+    AZT.ShowNotice()
 end)
 
-addAction("Review last pull", function()
-    AZT.Safe.Review()
+local ver = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+ver:SetPoint("TOPLEFT", cur.x, cur.y - 4)
+ver:SetTextColor(0.7, 0.7, 0.7)
+ver:SetText("v" .. AZT.VERSION .. ", /azt for the command list")
+
+-- the page is as tall as the deeper of the two columns, plus room for the
+-- version line hanging off the bottom of it
+page:SetHeight(deepest + 40)
+
+-- A plain position indicator rather than a grab handle, since the wheel is
+-- what moves the page. It hides itself when everything already fits.
+local barTrack = panel:CreateTexture(nil, "ARTWORK")
+barTrack:SetPoint("TOPRIGHT", -6, -8)
+barTrack:SetPoint("BOTTOMRIGHT", -6, 8)
+barTrack:SetWidth(4)
+barTrack:SetColorTexture(1, 1, 1, 0.07)
+
+local barThumb = panel:CreateTexture(nil, "OVERLAY")
+barThumb:SetWidth(4)
+barThumb:SetColorTexture(1, 0.82, 0, 0.45)
+
+local function paintBar()
+    local range = scroll:GetVerticalScrollRange()
+    local view = scroll:GetHeight()
+    if range < 1 or view < 1 then
+        barTrack:Hide()
+        barThumb:Hide()
+        return
+    end
+    barTrack:Show()
+    barThumb:Show()
+    local barH = barTrack:GetHeight()
+    local thumb = math.max(24, barH * view / (view + range))
+    barThumb:ClearAllPoints()
+    barThumb:SetHeight(thumb)
+    barThumb:SetPoint("TOP", barTrack, "TOP", 0, -(barH - thumb) * scroll:GetVerticalScroll() / range)
+end
+
+local WHEEL_STEP = 40
+scroll:EnableMouseWheel(true)
+scroll:SetScript("OnMouseWheel", function(self, delta)
+    local range = self:GetVerticalScrollRange()
+    local v = self:GetVerticalScroll() - delta * WHEEL_STEP
+    self:SetVerticalScroll(math.min(math.max(v, 0), range))
+    paintBar()
 end)
 
-addAction("Reset route", function()
-    AZT.Safe.Reset()
-    AZT.chat("recorded route cleared")
+-- the canvas sizes us on the first open and on any UI scale change, and the
+-- page has to be as wide as the viewport or the right column falls off it
+scroll:SetScript("OnSizeChanged", function(_, w)
+    page:SetWidth(w)
+    paintBar()
 end)
+refreshers[#refreshers + 1] = paintBar
 
 local category = Settings.RegisterCanvasLayoutCategory(panel, panel.name)
 Settings.RegisterAddOnCategory(category)

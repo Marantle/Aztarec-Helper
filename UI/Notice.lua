@@ -152,7 +152,7 @@ end
 local COMPASS_TITLE = "Compass arrow and the spoken cues"
 local COMPASS_CUES = "With compass arrow, the arrow points the way the room view does "
     .. "but the voices still talk as if you are facing the boss. "
-    .. "Disable Spoken cues in options if you want the arrow to be the only cue. "
+    .. "Disable Solo spoken cues in options if you want the arrow to be the only cue. "
 
 function AZT.ShowCompassCueAsk()
     AztarecHelperDB.compassCueAsked = true
@@ -160,7 +160,7 @@ function AZT.ShowCompassCueAsk()
         leftText = "Turn cues off",
         left = function()
             AztarecHelperDB.cues = false
-            AZT.chat("spoken cues: OFF")
+            AZT.chat("solo spoken cues: OFF")
         end,
         rightText = "Keep the cues",
         right = function() end,
@@ -172,9 +172,10 @@ end
 -- show these, once per stint in a role, and the options keep both
 -- changeable at any time.
 local CALL_TITLE = "Call the route for your party?"
-local CALL_TEXT = "You lead this group. With calling on, your answer keys also say each"
-    .. " quarter's marker number in party chat as you record, and party members running"
-    .. " the addon see your route as marker icons on the boss's timing. The keys work"
+local CALL_TEXT = "You lead this group. With calling on, your answer keys also name each"
+    .. " quarter in party chat as you record, by its marker number or as a direction if you"
+    .. " switch that on, and party members running the addon see your route on the boss's"
+    .. " timing. The keys work"
     .. " as before otherwise. One ask for the group: keep party chat quiet during the"
     .. " fight, since stray lines land on the followers' boards as garbage. Declining"
     .. " keeps the semi automatic mode, where you record and answer for yourself only."
@@ -194,12 +195,13 @@ end
 
 local FOLLOW_TITLE = "Follow the leader's calls?"
 local FOLLOW_TEXT = "Someone else leads this group. With following on, their route calls show"
-    .. " as marker icons on a board of their own and on the wave countdown, timed by the"
-    .. " boss like always. The addon can show the calls but never read them, so there is"
-    .. " no arrow and no spoken turns while you follow, and any party chat during the"
-    .. " sermon lands on the board. Declining keeps the semi automatic mode, where you"
-    .. " record and answer for yourself like when solo. Either way you can change your"
-    .. " mind under Party in the options."
+    .. " on a board of their own and on the wave countdown, timed by the boss like always."
+    .. " A leader who calls directions rather than markers gets read out loud as well, which"
+    .. " is its own tickbox under Party. The addon can show the calls but never read them,"
+    .. " so there is no arrow while you follow,"
+    .. " and any party chat during the sermon lands on the board. Declining keeps the semi"
+    .. " automatic mode, where you record and answer for yourself like when solo. Either way"
+    .. " you can change your mind under Party in the options."
 
 function AZT.ShowFollowAsk()
     show(FOLLOW_TITLE, FOLLOW_TEXT, {
