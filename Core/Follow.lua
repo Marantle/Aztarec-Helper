@@ -99,6 +99,12 @@ local function look()
     return STYLES[name] or STYLES.markers
 end
 
+-- everything that draws a quarter asks this, so the room view, the countdown
+-- and the arrow speak whatever language the calls are in
+function Follow.Arrows()
+    return AztarecHelperDB and look() == STYLES.arrows
+end
+
 local function refreshIcons()
     if AZT.SetSafeQuads then
         AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)

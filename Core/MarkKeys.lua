@@ -27,11 +27,6 @@ local QUAD_CMDS = {
     S = "AZTARECHELPER_MARK_SOUTH",
     W = "AZTARECHELPER_MARK_WEST",
 }
-
--- the room reads north up everywhere in the addon, so a quarter is a
--- direction and the call can be the word for it. Followers draw these as the
--- game's tutorial arrows and their voice can say them as they come
-local QUAD_DIRS = { N = "Up", E = "Right", S = "Down", W = "Left" }
 local owner -- the override bindings hang here, one clear drops them all
 local buttons = {}
 local armed = false
@@ -78,7 +73,7 @@ local function arm()
             if callWith then
                 -- marking always speaks in icon numbers, only the call
                 -- itself changes language
-                local say = AztarecHelperDB.callStyle == "arrows" and QUAD_DIRS[q] or icon
+                local say = AztarecHelperDB.callStyle == "arrows" and AZT.QUAD_DIR[q] or icon
                 lines[#lines + 1] = ("%s %s"):format(callWith, say)
             end
             if AztarecHelperDB.keysMark then

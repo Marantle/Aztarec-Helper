@@ -155,18 +155,29 @@ end
 -- world marker flags carry the same eight symbols as the raid target icons
 AZT.MARK_TEX = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_%d"
 
--- the icons a fresh install wears: triangle north, square east, cross south,
+-- the icons a fresh install wears: star north, square east, triangle south,
 -- circle west. The seeding and the mark keys' letter fallback both read this
-AZT.MARK_SEED = { N = 4, E = 6, S = 7, W = 2 }
+AZT.MARK_SEED = { N = 1, E = 6, S = 4, W = 2 }
+
+-- the room is read north up everywhere, so a quarter is also a direction.
+-- These name the tutorial pointer arrows, which is what lets a quarter be
+-- drawn as its arrow and called by a word the voice can read
+AZT.ARROW_ATLAS = "NPE_Arrow%s"
+AZT.QUAD_DIR = { N = "Up", E = "Right", S = "Down", W = "Left" }
 
 -- a quarter as the player sees it: the party leader's icon when one is
 -- synced over, else the marker icon they picked for it or the compass
 -- letter. Everything that names a quarter goes through here so the board,
 -- the arrow and the chat lines all speak the same language.
 function AZT.QuadName(q, size)
+    size = size or 14
+    local dir = AZT.QUAD_DIR[q]
+    if dir and AZT.Follow and AZT.Follow.Arrows() then
+        return ("|A:" .. AZT.ARROW_ATLAS .. ":%d:%d|a"):format(dir, size, size)
+    end
     local idx = (AZT.Follow and AZT.Follow.IconFor(q)) or (AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q])
     if idx then
-        return ("|T" .. AZT.MARK_TEX .. ":%d|t"):format(idx, size or 14)
+        return ("|T" .. AZT.MARK_TEX .. ":%d|t"):format(idx, size)
     end
     return q
 end

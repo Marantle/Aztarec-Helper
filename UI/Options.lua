@@ -117,9 +117,10 @@ local function enableLook(w, on)
 end
 
 -- follower mode owns these widgets: the route arrives as sealed calls with
--- no turn in them, so the arrow has nothing true to point at and its toggles
--- lock off while following is in effect. The stored settings come back
--- untouched when it stops
+-- no turn in them, so the arrow has nothing true to point at and the
+-- recorded cues have nothing true to say. Their toggles lock off while
+-- following is in effect and the stored settings come back untouched when
+-- it stops. The voice for the calls themselves lives under Party instead
 local followGated = {}
 local function applyFollowGate()
     local locked = AZT.Follow and AZT.Follow.Suppress()
@@ -350,14 +351,14 @@ followGated[#followGated + 1] = addCheck(
 
 section("Spoken cues")
 
-addCheck(
+followGated[#followGated + 1] = addCheck(
     "Solo spoken cues",
     "Plays a short cue for each wave, forward, left, right or stay, off the route you recorded"
         .. " yourself. The cues assume you are facing the boss in the middle of the room."
-        .. " Following someone else's calls has no turn in it to speak, so these stay quiet"
-        .. " then and the Party section has the voice for that.",
+        .. " Following someone else's calls has no turn in it to speak, so these lock off"
+        .. " while you follow and the Party section has the voice for that.",
     function()
-        return AztarecHelperDB.cues
+        return AztarecHelperDB.cues and not AztarecHelperDB.follow
     end,
     function(v)
         AztarecHelperDB.cues = v
@@ -561,11 +562,12 @@ local callCb = addCheck(
 )
 
 addCheck(
-    "Call directions, not markers",
-    "Changes what your calls say. Markers name the quarter's own icon by number, directions say"
-        .. " Up, Right, Down or Left with the room read north up like the room view draws it."
-        .. " Followers draw directions as arrows and their voice reads them out, and the words"
-        .. " mean something to party members without the addon too.",
+    "Direction arrows, not markers",
+    "Swaps the quarter markers for the four direction arrows, everywhere the addon names a"
+        .. " quarter, with the room read north up like the room view draws it. Your calls say"
+        .. " Up, Right, Down or Left to match, so followers see arrows and their voice reads"
+        .. " them out, and the words mean something to party members without the addon too."
+        .. " The same choice sits in the quarter menus on the room view.",
     function()
         return AztarecHelperDB.callStyle == "arrows"
     end,
@@ -578,7 +580,8 @@ local followCb = addCheck(
     "Follow the leader",
     "Shows the leader's route calls on a board of their own and on the wave countdown, timed by"
         .. " the boss like always. The addon can show the calls but never read them, so the arrow"
-        .. " locks off while this is on and party chat during the sermon lands on the board. The"
+        .. " and the solo cues lock off while this is on and party chat during the sermon lands"
+        .. " on the board. The"
         .. " board parks in the delve while this is on, so you can drag it into place. One role"
         .. " at a time, turning this on turns calling off.",
     function()

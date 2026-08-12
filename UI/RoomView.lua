@@ -18,21 +18,33 @@ local view
 -- compass letters, so each quarter label can show a marker icon instead
 local MARKS = { "Star", "Circle", "Diamond", "Triangle", "Moon", "Square", "Cross", "Skull" }
 
+-- the arrows are one language for the whole room rather than a per quarter
+-- pick, since a follower reading a sealed call has no way to tell which
+-- language that one is in. SetCallStyle carries the rest, the macros and the
+-- party included
+local function pickQuad(qname, idx, arrows)
+    if not arrows then
+        AztarecHelperDB.quadIcons[qname] = idx
+    end
+    AZT.SetCallStyle(arrows and "arrows" or "markers")
+    AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
+end
+
 local function labelMenu(owner, qname)
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(qname .. " quarter shows")
         root:CreateButton("Letter " .. qname, function()
-            AztarecHelperDB.quadIcons[qname] = nil
-            AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
-            AZT.MarkKeysSync()
-            AZT.Follow.SendIcons()
+            pickQuad(qname, nil, false)
         end)
+        root:CreateButton(
+            ("|A:" .. AZT.ARROW_ATLAS .. ":16:16|a Direction arrows"):format(AZT.QUAD_DIR[qname]),
+            function()
+                pickQuad(qname, nil, true)
+            end
+        )
         for i, mark in ipairs(MARKS) do
             root:CreateButton(("|T" .. AZT.MARK_TEX .. ":16|t %s"):format(i, mark), function()
-                AztarecHelperDB.quadIcons[qname] = i
-                AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
-                AZT.MarkKeysSync()
-                AZT.Follow.SendIcons()
+                pickQuad(qname, i, false)
             end)
         end
     end)
@@ -483,9 +495,9 @@ function AZT.SetSafeQuads(list, activeIdx)
         else
             w:SetVertexColor(1, 1, 1, q.shade)
             fs:SetText(disp)
-            -- the letters sit back at 0.65 but a chosen marker icon draws
-            -- fully opaque, it is the player's own landmark
-            local hasIcon = (AZT.Follow and AZT.Follow.IconFor(q.name))
+            -- the letters sit back at 0.65 but art draws fully opaque, an
+            -- arrow or a chosen marker is the player's own landmark
+            local hasIcon = (AZT.Follow and (AZT.Follow.Arrows() or AZT.Follow.IconFor(q.name)))
                 or (AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q.name])
             fs:SetTextColor(1, 1, 1, hasIcon and 1 or 0.65)
         end
