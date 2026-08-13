@@ -41,6 +41,13 @@ local INSTR = "Azta'rec slams three quarters of the room at once during Sermon o
     .. "You cannot answer a wave that has not happened yet, and a wave left blank when "
     .. "the echoes begin can still be filled right up until its own echo plays. Anything "
     .. "you never answer stays unknown.\n\n"
+    .. "If naming quarters in the scramble is the hard part, the settings can switch the keys "
+    .. "to relative turns, the same reading the arrow and the voice use. A press then says the "
+    .. "move you made rather than the place you ended up: north for straight through the boss, "
+    .. "east and west for the two sides. The first wave still names its quarter, since there "
+    .. "is nothing behind it to turn from, and that is where the route starts. South answers "
+    .. "nothing after that, the safe spot never lands twice in the same place. Marking and "
+    .. "calling need a quarter, so they switch off while it is on.\n\n"
     .. "When the echoes start, the room view lights the quarter you are due in green and the "
     .. "one after it yellow. The arrow shows the move to make from where the last wave "
     .. "left you and the voice calls it out loud.\n\n"
@@ -53,7 +60,8 @@ local INSTR = "Azta'rec slams three quarters of the room at once during Sermon o
     .. "markers rather than compass letters. drop the matching world markers in the room. Click a marker out of combat "
     .. "to change it. Between pulls, /azt replay walks "
     .. "the last route again at "
-    .. "its real speed and /azt review says what it recorded."
+    .. "its real speed, /azt review says what it recorded, and /azt practice runs a whole "
+    .. "pretend sermon for you to answer and get echoed, no boss needed."
 
 local function build()
     box = CreateFrame("Frame", "AztarecHelperNotice", UIParent, "BackdropTemplate")

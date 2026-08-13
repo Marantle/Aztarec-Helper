@@ -20,7 +20,9 @@ BINDING_NAME_AZTARECHELPER_MARK_EAST = "Azta'rec Helper: answer east"
 BINDING_NAME_AZTARECHELPER_MARK_SOUTH = "Azta'rec Helper: answer south"
 BINDING_NAME_AZTARECHELPER_MARK_WEST = "Azta'rec Helper: answer west"
 
-local seq = {}
+local seq = {} -- the route as quarters, which is what everything else reads
+local steps = {} -- what the player actually answered, quarters or turns
+local top = 0 -- highest wave the route knows of, answered or closed
 local armed = false
 
 -- capture state
@@ -41,6 +43,7 @@ local LOCK_DELAY = 0.8 -- the window closes this long after its hit
 local chanUnit = nil -- unit token that ran the channel, its casts are the echoes
 local capturing = false -- a channel is being recorded
 local lastPull -- most recent recorded route, kept for review and replay
+local practiceTicker -- non-nil while a practice sermon runs
 
 local REPLAY_LEAD = 1.8 -- pause before a replay's first wave
 local REPLAY_TAIL = 1.8 -- how long the last replay wave stays lit
@@ -105,12 +108,64 @@ function Safe.TurnFromTo(from, to)
     return TURNS[(b - a) % 4]
 end
 
+local TURN_OFFSET = {}
+for i, t in pairs(TURNS) do
+    TURN_OFFSET[t] = i
+end
+
+-- and the way back, for routes answered as turns: the quarter that move
+-- lands you in, again from the view of someone facing the middle
+local function quadFromTurn(from, turn)
+    local a, off = QUAD_INDEX[from], TURN_OFFSET[turn]
+    if not a or not off then
+        return nil
+    end
+    return QUADRANTS[(a - 1 + off) % 4 + 1]
+end
+
 --#region Capture
 
 local function stopTicker()
     if ticker then
         ticker:Cancel()
         ticker = nil
+    end
+end
+
+-- Rebuild the quarters out of what was answered. A quarter answer stands on
+-- its own, a turn only means something next to the wave before it, so the
+-- whole route is walked again rather than patched at one index. That is what
+-- lets a first wave answered late place every turn that was pressed behind it.
+local function resolve()
+    local prev
+    for i = 1, top do
+        local step = steps[i]
+        local q
+        if QUAD_INDEX[step] then
+            q = step
+        elseif step and prev then
+            q = quadFromTurn(prev, step)
+        end
+        if q then
+            seq[i] = q
+        end
+        prev = q
+    end
+end
+
+local function clearRoute()
+    wipe(seq)
+    wipe(steps)
+    top = 0
+end
+
+-- a wave the boss has moved past. Whatever is in it now is what it keeps
+local function closeWindow(i)
+    if seq[i] == nil then
+        seq[i] = "?"
+    end
+    if i > top then
+        top = i
     end
 end
 
@@ -131,7 +186,7 @@ end
 -- the quarter keys.
 local function beginCapture(unit)
     stopTicker()
-    wipe(seq)
+    clearRoute()
     chanUnit = unit
     chanStartT = GetTime()
     capturing = true
@@ -146,12 +201,14 @@ local function beginCapture(unit)
         local elapsed = GetTime() - chanStartT
         setWave("record", winIdx, nil, chanStartT + hitTime(winIdx))
         if elapsed >= hitTime(winIdx) + LOCK_DELAY then
-            if seq[winIdx] == nil then
-                seq[winIdx] = "?"
+            if steps[winIdx] == nil then
                 AZT.Log(("WINDOW %d closed with no input"):format(winIdx))
             end
+            closeWindow(winIdx)
             winIdx = winIdx + 1
-            if AZT.SetSafeQuads then
+            -- in a practice sermon the board belongs to the drill's target
+            -- colors, a neutral repaint here would blink through them
+            if AZT.SetSafeQuads and not practiceTicker then
                 AZT.SetSafeQuads(seq)
             end
         end
@@ -177,9 +234,7 @@ local function finishCapture()
     -- their echoes show as unknown, there is nothing to reconstruct from
     -- when the player is the only sensor
     while winIdx <= MAX_WAVES and hitTime(winIdx) <= elapsed + 0.6 do
-        if seq[winIdx] == nil then
-            seq[winIdx] = "?"
-        end
+        closeWindow(winIdx)
         winIdx = winIdx + 1
     end
     AZT.Log(("CAPTURE closed after %.1fs: %s"):format(elapsed, seqText()))
@@ -202,19 +257,21 @@ local function finishCapture()
     end)
 end
 
--- quarter keys: the player names the quarter outright, no position read
--- anywhere. Answers land in order. The earliest wave still unanswered takes
--- the press, and nothing can be answered before its wave has happened, so
--- missing one and tapping twice gets you level again instead of shifting
--- the whole route. A wave still blank when the echoes start can be filled
--- right up until its own echo plays. Outside the pull it appends instead,
--- for walking a route in by hand between pulls. During the pull a press
--- with nothing left to answer does nothing at all.
-local function fillSpot(i, q, caught)
-    seq[i] = q
-    AZT.Log(("SAFESPOT answered %d = %s%s"):format(i, q, caught and " (caught up)" or ""))
+-- an answer, stored as it was given and read back as a quarter
+local function fillSpot(i, step, caught)
+    steps[i] = step
+    if i > top then
+        top = i
+    end
+    resolve()
+    -- a turn with no answered wave behind it has no quarter yet, so it reads
+    -- as unknown until one arrives
+    local q = seq[i] or "?"
+    AZT.Log(("SAFESPOT answered %d = %s -> %s%s"):format(i, step, q, caught and " (caught up)" or ""))
     AZT.chat(("safe spot %d: %s"):format(i, AZT.QuadName(q, 14)))
-    if AZT.SetSafeQuads then
+    -- same blink guard as the window close, the flash and the chat line
+    -- carry the press feedback during a drill
+    if AZT.SetSafeQuads and not practiceTicker then
         AZT.SetSafeQuads(seq, echoIdx > 0 and echoIdx or nil)
     end
     if AZT.FlashQuad then
@@ -222,56 +279,130 @@ local function fillSpot(i, q, caught)
     end
 end
 
-function Safe.CaptureQuadrant(q)
-    if not QUAD_INDEX[q] then
-        return
-    end
+-- Which wave an answer belongs to. Answers land in order: the earliest wave
+-- still unanswered takes the press, and nothing can be answered before its
+-- wave has happened, so missing one and tapping twice gets you level again
+-- instead of shifting the whole route. A wave still blank when the echoes
+-- start can be filled right up until its own echo plays. Nothing back means
+-- there is no wave waiting for one.
+local function answerIndex()
     -- how far the boss has actually got: the open window while the channel
     -- runs, the whole recorded route once it has stopped
-    local limit = capturing and math.min(winIdx, MAX_WAVES) or #seq
+    local limit = capturing and math.min(winIdx, MAX_WAVES) or top
     for i = 1, limit do
         if seq[i] == nil or seq[i] == "?" then
-            fillSpot(i, q, i < limit)
-            return
+            return i, i < limit
         end
     end
     if capturing and limit >= 1 then
         -- level with the boss, so the press corrects the wave in front of you
-        fillSpot(limit, q)
+        return limit, false
+    end
+end
+
+-- Outside the pull an answer appends instead, for walking a route in by hand
+-- between pulls. During the pull a press with nothing left to answer does
+-- nothing at all.
+local function place(step, i, caught)
+    if not i then
+        -- mid-pull a stray press must never grow the route, the gap between
+        -- the channel and the first echo would happily take an append otherwise
+        if armed or echoIdx > 0 then
+            return
+        end
+        -- a turn cannot open a route, there is no wave behind it to turn from
+        if top == 0 and not QUAD_INDEX[step] then
+            return
+        end
+        if top >= MAX_WAVES then
+            clearRoute()
+        end
+        i = top + 1
+    end
+    -- The safe spot never lands in the same quarter twice running, so an
+    -- answer matching either neighbour is a slipped press rather than a route.
+    -- Turns cannot express a repeat, this only ever catches a quarter, and
+    -- the wave after only exists when an older hole is being backfilled
+    if seq[i - 1] == step or seq[i + 1] == step then
+        AZT.chat(("wave %d cannot repeat the quarter next to it, so that press was dropped"):format(i))
         return
     end
-    -- mid-pull a stray press must never grow the route, the gap between the
-    -- channel and the first echo would happily take an append otherwise
-    if armed or echoIdx > 0 then
+    fillSpot(i, step, caught)
+end
+
+-- the player names the quarter outright, no position read anywhere
+function Safe.CaptureQuadrant(q)
+    if not QUAD_INDEX[q] then
         return
     end
-    if #seq >= MAX_WAVES then
-        wipe(seq)
+    place(q, answerIndex())
+end
+
+-- What each quarter key means once the keys answer relative turns. The room
+-- is read north up, so the key that says north is the one that says straight
+-- through the boss, and south would be staying put.
+local KEY_TURN = { N = "forward", E = "right", S = "stay", W = "left" }
+
+local DOUBLE_TAP = 1.2 -- a second press of the same key inside this is a slip
+local lastKey, lastKeyAt
+
+-- The keybinds, their slash shortcuts and the secure mark buttons all answer
+-- through here. Room view clicks do not: a click lands on a quarter of the
+-- room, so it names that quarter whatever the keys are set to mean.
+function Safe.AnswerKey(q)
+    if not QUAD_INDEX[q] then
+        return
     end
-    fillSpot(#seq + 1, q)
+    local nowT = GetTime()
+    -- waves sit 3s apart at the very tightest, so the same key twice inside a
+    -- second is one fumbeld press. Left alone the second half of it spills
+    -- into the next window and writes a wave the boss never called
+    if q == lastKey and nowT - lastKeyAt < DOUBLE_TAP then
+        AZT.Log("KEY " .. q .. " dropped, double tap")
+        return
+    end
+    lastKey, lastKeyAt = q, nowT
+    local i, caught = answerIndex()
+    -- the opening wave has nothing behind it to turn from, so it names its
+    -- quarter outright even while the rest of the route is answered as turns
+    if AztarecHelperDB.relativeTurns and i and i > 1 then
+        local turn = KEY_TURN[q]
+        if turn == "stay" then
+            AZT.chat("the safe spot never stays put, so south answers nothing after the first wave")
+            return
+        end
+        place(turn, i, caught)
+        return
+    end
+    place(q, i, caught)
 end
 
 -- globals for Bindings.xml, one per quarter
 function AztarecHelper_MarkNorth()
-    Safe.CaptureQuadrant("N")
+    Safe.AnswerKey("N")
 end
 
 function AztarecHelper_MarkEast()
-    Safe.CaptureQuadrant("E")
+    Safe.AnswerKey("E")
 end
 
 function AztarecHelper_MarkSouth()
-    Safe.CaptureQuadrant("S")
+    Safe.AnswerKey("S")
 end
 
 function AztarecHelper_MarkWest()
-    Safe.CaptureQuadrant("W")
+    Safe.AnswerKey("W")
 end
 
 function Safe.Reset()
     stopTicker()
     Safe.StopReplay()
-    wipe(seq)
+    -- a real pull starting mid-drill lands here too, the fight wins
+    if practiceTicker then
+        practiceTicker:Cancel()
+        practiceTicker = nil
+    end
+    clearRoute()
     chanUnit = nil
     capturing = false
     winIdx = 0
@@ -404,16 +535,105 @@ function Safe.Replay()
     runReplay(lastPull.seq, lastPull.grid or grid)
 end
 
--- three made-up waves for the settings button, so the whole echo display
--- can be watched without ever pulling the boss
-local DEMO_ROUTE = { "N", "E", "W", "S" }
+--#endregion
 
-function Safe.PreviewReplay()
+--#region Practice
+
+-- A pretend sermon, so the whole loop can be drilled without the boss. The
+-- room view plays the ground's part, the safe quarter green and the other
+-- three red, and the player answers with their keys or clicks like a real
+-- pull. The echoes that follow are whatever they recorded. Input runs
+-- through the real capture machinery, so relative turns and the press
+-- guards behave exactly as they do in the fight.
+
+local PRACTICE_WAVES = 7 -- the longest phase "??" reaches
+
+local function randomRoute(n)
+    local route = {}
+    local at = math.random(4)
+    for i = 1, n do
+        route[i] = QUADRANTS[at]
+        -- any quarter but the one just used, the boss never repeats
+        at = (at - 1 + math.random(3)) % 4 + 1
+    end
+    return route
+end
+
+local function endPractice(route)
+    practiceTicker:Cancel()
+    practiceTicker = nil
+    stopTicker()
+    capturing = false
+    local right = 0
+    for i, q in ipairs(route) do
+        if seq[i] == q then
+            right = right + 1
+        end
+    end
+    AZT.chat(("practice sermon over, %d of %d answered right - playing your recording back"):format(right, #route))
+    snapshotPull()
+    setWave(nil, 0, nil, nil)
+    runReplay(lastPull.seq, grid)
+end
+
+local function startDrill()
+    local route = randomRoute(PRACTICE_WAVES)
+    beginCapture(nil)
+    -- the capture repaints hold off while the drill runs, so the target
+    -- colors only need painting when the wave moves on
+    local shown = 0
+    local function paint()
+        shown = winIdx
+        if AZT.SetSafeQuads then
+            AZT.SetSafeQuads({ route[winIdx] }, 1)
+        end
+        if AZT.FlashQuad then
+            AZT.FlashQuad(route[winIdx])
+        end
+    end
+    practiceTicker = C_Timer.NewTicker(0.2, function()
+        if winIdx > #route then
+            endPractice(route)
+            return
+        end
+        if winIdx > shown then
+            paint()
+        end
+    end)
+    paint()
+end
+
+local PRACTICE_LEAD = 3 -- countdown seconds, time to get hands on the keys
+
+function Safe.Practice()
+    if practiceTicker then
+        Safe.Reset()
+        AZT.chat("practice stopped")
+        return
+    end
     if not replayGate() then
         return
     end
-    AZT.chat("previewing three pretend waves - this is what the echoes look like")
-    runReplay(DEMO_ROUTE, grid)
+    if AZT.EnsureRoomView then
+        AZT.EnsureRoomView()
+    end
+    AZT.chat("practice sermon - green is safe, answer each wave like a real pull")
+    if AztarecHelperDB.relativeTurns then
+        AZT.chat("your keys answer relative turns, first wave excepted")
+    else
+        AZT.chat("your keys answer compass quarters")
+    end
+    AZT.chat(("starting in %d"):format(PRACTICE_LEAD))
+    local left = PRACTICE_LEAD
+    practiceTicker = C_Timer.NewTicker(1, function()
+        left = left - 1
+        if left > 0 then
+            AZT.chat(tostring(left))
+            return
+        end
+        practiceTicker:Cancel()
+        startDrill()
+    end)
 end
 
 --#endregion

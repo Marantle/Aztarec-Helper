@@ -37,7 +37,7 @@ local function button(q)
         btn = CreateFrame("Button", "AztarecHelperMarkKey" .. q, nil, "SecureActionButtonTemplate")
         btn:RegisterForClicks("AnyDown")
         btn:SetScript("PostClick", function()
-            AZT.Safe.CaptureQuadrant(q)
+            AZT.Safe.AnswerKey(q)
         end)
         buttons[q] = btn
     end
@@ -96,6 +96,25 @@ local function disarm()
     armed = false
 end
 
+-- Turn keys cannot carry any of this. The macro behind a key is built for one
+-- named quarter and frozen for the whole pull, while a turn has no quarter
+-- until the press lands, so the rig stands down rather than mark and call the
+-- wrong spot. The two options go off with it instead of sitting on and silent.
+function AZT.SetRelativeTurns(on)
+    AztarecHelperDB.relativeTurns = on
+    if on and (AztarecHelperDB.keysMark or AztarecHelperDB.callRoute) then
+        AztarecHelperDB.keysMark = false
+        if AztarecHelperDB.callRoute then
+            AZT.SetCallRoute(false)
+        end
+        AZT.chat("marking and calling: OFF - a turn key has no quarter to mark or call")
+    end
+    AZT.MarkKeysSync()
+    if AZT.RefreshOptions then
+        AZT.RefreshOptions()
+    end
+end
+
 local ev = CreateFrame("Frame")
 
 -- (re)wire to match the option, the zone and the current binds. A sync that
@@ -111,6 +130,9 @@ function AZT.MarkKeysSync()
     end
     ev:UnregisterEvent("PLAYER_REGEN_ENABLED")
     local want = AztarecHelperDB.keysMark or callActive() or (AZT.Dev and AZT.Dev.callSay)
+    if AztarecHelperDB.relativeTurns then
+        want = false
+    end
     if want and AZT.InDelve() then
         arm()
     elseif armed then

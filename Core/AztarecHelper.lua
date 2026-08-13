@@ -5,7 +5,7 @@
 
 local ADDON, AZT = ...
 
-AZT.VERSION = "1.5.0"
+AZT.VERSION = "1.6.0"
 
 -- Venomfall Deeps boss room, measured on PTR 12.1.0.
 -- UnitPosition returns (a, b, z, inst). The addon prints them as world=b,a.
@@ -37,6 +37,7 @@ local DEFAULTS = {
     arrow = true, -- quest-style arrow showing the move for each echo
     arrowColor = "gold", -- key into AZT.ARROW_COLORS
     arrowCompass = false, -- arrow points the way the room view does, no spoken cues
+    relativeTurns = false, -- quarter keys answer turns instead, after the first wave
     cues = true, -- the recorded solo cues during your own echoes
     callVoice = true, -- follower: read the leader's direction calls out loud
     keysMark = false, -- answer keys also mark the player for the party
@@ -186,8 +187,10 @@ local HELP = {
     "/azt room          - toggle the room view (auto-shows in the delve)",
     "/azt map           - toggle the map art backdrop behind the room view",
     "/azt n|e|s|w       - answer a wave with that quarter (bindable keys too)",
-    "/azt replay        - practice: replay the last recorded route with real timings",
+    "/azt replay        - replay the last recorded route with real timings",
+    "/azt practice      - a pretend sermon to record and get echoed, no boss needed",
     "/azt cue           - toggle the solo spoken cues during the echoes",
+    "/azt turns         - toggle answering in relative turns after the first wave",
     "/azt call          - toggle calling the route for the party while you lead",
     "/azt follow        - toggle following the leader's calls",
     "/azt review        - what the last pull recorded and where you died",
@@ -210,9 +213,11 @@ SlashCmdList["AZT"] = function(msg)
     elseif cmd == "map" then
         AZT.ToggleMapArt()
     elseif cmd == "n" or cmd == "e" or cmd == "s" or cmd == "w" then
-        AZT.Safe.CaptureQuadrant(cmd:upper())
+        AZT.Safe.AnswerKey(cmd:upper())
     elseif cmd == "replay" then
         AZT.Safe.Replay()
+    elseif cmd == "practice" then
+        AZT.Safe.Practice()
     elseif cmd == "anywhere" then
         AztarecHelperDB.anywhere = not AztarecHelperDB.anywhere
         -- everything zone gated re-decides right now instead of waiting for
@@ -235,10 +240,19 @@ SlashCmdList["AZT"] = function(msg)
     elseif cmd == "cue" then
         AztarecHelperDB.cues = not AztarecHelperDB.cues
         chat("solo spoken cues: " .. (AztarecHelperDB.cues and "ON" or "OFF"))
+    elseif cmd == "turns" then
+        AZT.SetRelativeTurns(not AztarecHelperDB.relativeTurns)
+        if AztarecHelperDB.relativeTurns then
+            chat("relative turns: ON - first wave still names its quarter, marking and calling are off")
+        else
+            chat("relative turns: OFF - back to naming the quarter you ran to")
+        end
     elseif cmd == "call" then
         -- calling belongs to the leader alone. The command refuses
         -- anyone else so two routes never fight over the boards
-        if not AztarecHelperDB.callRoute and not (AZT.InPlayerParty() and UnitIsGroupLeader("player")) then
+        if not AztarecHelperDB.callRoute and AztarecHelperDB.relativeTurns then
+            chat("your keys answer relative turns, and a turn has no quarter to call - /azt turns first")
+        elseif not AztarecHelperDB.callRoute and not (AZT.InPlayerParty() and UnitIsGroupLeader("player")) then
             chat("route calling is for the party leader - take the lead first")
         else
             AZT.SetCallRoute(not AztarecHelperDB.callRoute)

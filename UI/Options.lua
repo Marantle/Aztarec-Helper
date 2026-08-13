@@ -490,12 +490,13 @@ end)
 section("Route")
 
 addAction(
-    "Preview the memory game",
+    "Practice the memory game",
     function()
-        AZT.Safe.PreviewReplay()
+        AZT.Safe.Practice()
     end,
-    "Plays three pretend waves through the room view, the countdown and the arrow, the way a real"
-        .. " echo phase looks. Click again to stop it early."
+    "A pretend sermon on the room view: seven waves, safe quarter green and the rest red."
+        .. " Answer each one with your keys or clicks like a real pull, and the echoes that"
+        .. " follow play back what you recorded. Click again to stop early."
 )
 
 addAction("Replay last pull", function()
@@ -526,9 +527,26 @@ addBindRow("Answer east", "AZTARECHELPER_MARK_EAST")
 addBindRow("Answer south", "AZTARECHELPER_MARK_SOUTH")
 addBindRow("Answer west", "AZTARECHELPER_MARK_WEST")
 
+addCheck(
+    "Answer in relative turns",
+    "Answer with the move you made rather than the quarter you ran to, read like the arrow:"
+        .. " as if you face the boss in the middle. North is FORWARD, east is RIGHT and west"
+        .. " is LEFT. The first wave still needs its compass direction, which is where the"
+        .. " route starts. Marking and calling switch off, since a turn names no quarter.",
+    function()
+        return AztarecHelperDB.relativeTurns
+    end,
+    function(v)
+        AZT.SetRelativeTurns(v)
+        for _, fn in ipairs(refreshers) do
+            fn()
+        end
+    end
+)
+
 section("Party")
 
-addCheck(
+local markCb = addCheck(
     "Answer keys mark me",
     "Each press of a quarter key also puts that quarter's marker on you, through the game's own"
         .. " target marker system, so the party sees where you are heading even without the addon."
@@ -595,7 +613,7 @@ local followCb = addCheck(
     end
 )
 
-addCheck(
+local voiceCb = addCheck(
     "Speak the leader's calls",
     "Reads each call out loud as its echo comes up, in the game's own text to speech voice."
         .. " It waits on the leader: they have to be calling directions rather than markers,"
@@ -613,8 +631,13 @@ addCheck(
 -- that is already on stays clickable, going off is always allowed
 local function applyRoleGate()
     local leading = AZT.InPlayerParty() and UnitIsGroupLeader("player")
-    enableLook(callCb, leading or AztarecHelperDB.callRoute)
+    local turns = AztarecHelperDB.relativeTurns
+    enableLook(callCb, (leading or AztarecHelperDB.callRoute) and not turns)
+    enableLook(markCb, not turns)
     enableLook(followCb, not leading or AztarecHelperDB.follow)
+    -- the voice only ever speaks the leader's calls, so it rides the follow
+    -- toggle rather than the live role
+    enableLook(voiceCb, AztarecHelperDB.follow or AztarecHelperDB.callVoice)
 end
 refreshers[#refreshers + 1] = applyRoleGate
 

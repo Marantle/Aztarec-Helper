@@ -35,6 +35,7 @@ Everything that reads the boss still works. It knows when the Sermon starts, how
 ## Features
 
 *   Wave-timed recording. The addon reads the rhythm of the waves from the boss's own channel, so it listens for your answers. One press per wave, from four bindable keys or the `/azt n`, `/azt e`, `/azt s` and `/azt w` commands for macros. You can also click the quarter on the room view while the memory game runs. Answers land in order, so a missed one is caught up by your next press, and a wave still blank when the echoes start can be filled right until its own echo plays.
+*   Answer in relative turns, if map directions in the scramble are the hard part. With this setting your keys say the move you made instead of the place you ended up, read the same way the arrow speaks: north is straight through the boss, east and west your right and left as you face him. The first wave still names its quarter, that is where the route starts, and the addon drops presses that could not be a real route, like the same key twice in a moment.
 *   The arrow gives you the move for each echo, read as if you were facing the boss in the middle. Up is straight through him, left and right are your own and down means stay where you are. Turn your back on him and it reads backwards.
 *   Or switch it to the compass arrow, which points the way the room view's green quarter points and carries the quarter's own marker inside it, for players who do not keep the boss in front of them. The spoken cues keep talking as if you face the boss in that mode, and the addon asks once whether you want them along.
 *   Solo spoken cues for anyone who would rather listen than look. As each echo starts a voice says forward, left, right or stay, read the same way as the relative arrow points, so keep the boss in front of you when you are going by ear. `/azt cue` toggles them, and the settings panel has a test button for each sound.
@@ -45,7 +46,8 @@ Everything that reads the boss still works. It knows when the Sermon starts, how
 *   A wave you never answered shows as unknown, on the room view and through its echo.
 *   `/azt review` shows what the last pull recorded and, if you died, which echo got you. `/azt replay` runs the route through the display on its real timings, so you can practice reading it between pulls.
 *   Handles the longer sequences on higher tiers, where the pattern grows with every intermission.
-*   Every window drags where you want it and remembers the spot. A small padlock in the corner locks a window in place and lets clicks pass through it. The Preview button in the settings plays three pretend waves through the whole display, so you can watch it work and arrange your layout without pulling the boss first.
+*   Practice the memory game without the boss. The button in the settings, or `/azt practice`, runs a pretend sermon on the room view: a short countdown that tells you which mode your keys are in, then seven random waves with the safe quarter green and the rest red, and you answer them with your keys or clicks like a real pull. Then the echoes play back what you recorded and it tells you how many you got right. Also handy for arranging your layout before ever pulling.
+*   Every window drags where you want it and remembers the spot. A small padlock in the corner locks a window in place and lets clicks pass through it.
 *   A settings panel with the quarter keys bindable in it. Open it with `/azt options`, from the Options button on the room view or from the addon compartment by the minimap.
 
 *A note on lineage: if you have seen another addon do this, the idea started here. The recording and the room view were measured and built in mid-July 2026 and went public in this addon on July 25.*
@@ -55,6 +57,8 @@ Everything that reads the boss still works. It knows when the Sermon starts, how
 *   `/azt room` toggles the room view (it auto-shows in the delve)
 *   `/azt n`, `/azt e`, `/azt s`, `/azt w` record that quarter for the earliest wave you have not answered (bindable in Key Bindings, macroable)
 *   `/azt replay` replays the last recorded route, for practice
+*   `/azt practice` runs the pretend sermon drill, record and get echoed with no boss around
+*   `/azt turns` switches the keys between quarters and relative turns
 *   `/azt review` shows what the last pull recorded and where you died
 *   `/azt cue` toggles the spoken cues
 *   `/azt call` toggles calling the route for your party while you lead
