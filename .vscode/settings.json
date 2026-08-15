@@ -36,7 +36,8 @@
         "DELETE_ITEM_CONFIRM_STRING",
         "ChatFontNormal",
         "CreateVector2D",
-        "UISpecialFrames"
+        "UISpecialFrames",
+        "MinimapCompassTexture"
     ],
     "Lua.type.weakUnionCheck": true
 }

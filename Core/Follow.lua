@@ -328,26 +328,20 @@ end
 -- Direction calls are words, so the voice can say one back without anything
 -- ever reading it. Marker calls are bare numbers and a voice announcing
 -- "six" helps nobdy, so those stay silent and the board carries them alone.
-local ttsVoice
 local voiceWarned
 
 local function speakCall(text)
     if not AztarecHelperDB.callVoice or look() ~= STYLES.arrows then
         return
     end
-    ttsVoice = ttsVoice or (C_VoiceChat.GetTtsVoices() or {})[1]
-    if not ttsVoice then
-        if not voiceWarned then
-            voiceWarned = true
-            AZT.chat("no text to speech voice on this machine - the leader's calls stay on the board")
-        end
+    local ok, why = AZT.Speak(text)
+    if ok or voiceWarned then
         return
     end
-    -- normal rate, full volume, and no overlap so a late echo cuts the one
-    -- before it off rather than talking over it. The pcall is for the sink
-    -- itself, a build can take secret values away from it like the textures
-    if not pcall(C_VoiceChat.SpeakText, ttsVoice.voiceID, text, 0, 100, false) and not voiceWarned then
-        voiceWarned = true
+    voiceWarned = true
+    if why == "novoice" then
+        AZT.chat("no text to speech voice on this machine - the leader's calls stay on the board")
+    else
         AZT.chat("the leader's calls cannot be spoken on this build - the board still has them")
     end
 end

@@ -24,13 +24,15 @@ local page = CreateFrame("Frame", nil, scroll)
 page:SetSize(600, 600)
 scroll:SetScrollChild(page)
 
--- re-read the state every time the panel opens
+-- Re-read the state every time the panel opens. Rows register a refresher
+-- and anything that changes what another row shows calls the lot.
 local refreshers = {}
-panel:SetScript("OnShow", function()
+local function refreshAll()
     for _, fn in ipairs(refreshers) do
         fn()
     end
-end)
+end
+panel:SetScript("OnShow", refreshAll)
 
 local title = page:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
@@ -105,15 +107,147 @@ local function addAction(label, handler, tip)
     return btn
 end
 
+-- the panel's one text palette: gold when a thing is live, grey when not
+local function tintLabel(fs, on)
+    if on then
+        fs:SetTextColor(1, 0.82, 0)
+    else
+        fs:SetTextColor(0.5, 0.5, 0.5)
+    end
+end
+
 local function enableLook(w, on)
     w:SetEnabled(on)
     if w.label then
-        if on then
-            w.label:SetTextColor(1, 0.82, 0)
-        else
-            w.label:SetTextColor(0.5, 0.5, 0.5)
-        end
+        tintLabel(w.label, on)
     end
+end
+
+-- A two state switch: a titled row with a word on each side of a small pill
+-- and a knob that slides to the chosen one, the word not chosen in grey.
+-- The pill and knob are svg files, which a 12.1 client draws straight from
+-- disk, so the shapes are actually round. A 12.0 client has no
+-- CreateVectorGraphics and gets flat squares with the same behavior.
+local SWITCH_MEDIA = "Interface\\AddOns\\AztarecHelper\\Media\\"
+local SWITCH_W, SWITCH_H, KNOB = 46, 22, 16
+
+local function switchArt(parent, file, layer)
+    if parent.CreateVectorGraphics then
+        local v = parent:CreateVectorGraphics()
+        v:SetSVG(SWITCH_MEDIA .. file)
+        v:SetDrawLayer(layer)
+        return v
+    end
+    local t = parent:CreateTexture(nil, layer)
+    t:SetColorTexture(1, 1, 1)
+    return t
+end
+
+local function addSwitch(name, leftText, rightText, tip, get, set)
+    local f = CreateFrame("Button", nil, page)
+    f:SetSize(300, 48)
+    f:SetPoint("TOPLEFT", cur.x, cur.y)
+    local head = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    head:SetPoint("TOPLEFT", 0, 0)
+    head:SetText(name)
+    f.label = head
+
+    local track = switchArt(f, "switch-track.svg", "ARTWORK")
+    track:SetSize(SWITCH_W, SWITCH_H)
+    -- fixed spot rather than flowing after the left word, so stacked
+    -- switches line their pills up
+    track:SetPoint("TOPLEFT", 110, -22)
+    track:SetVertexColor(0, 0, 0, 0.5)
+
+    local leftFS = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    leftFS:SetPoint("RIGHT", track, "LEFT", -8, 0)
+    leftFS:SetText(leftText)
+    local rightFS = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    rightFS:SetPoint("LEFT", track, "RIGHT", 8, 0)
+    rightFS:SetText(rightText)
+
+    -- the knob rides a plain frame so the slide can be a real animation
+    -- whichever art object sits inside
+    local knob = CreateFrame("Frame", nil, f)
+    knob:SetSize(KNOB, KNOB)
+    local knobArt = switchArt(knob, "switch-knob.svg", "OVERLAY")
+    knobArt:SetSize(KNOB, KNOB)
+    knobArt:SetPoint("CENTER", knob)
+    knobArt:SetVertexColor(1, 0.82, 0)
+
+    local function paintWords(v, on)
+        tintLabel(leftFS, on and not v)
+        tintLabel(rightFS, on and v)
+    end
+
+    -- The slide moves the knob's anchor rather than playing a stock
+    -- animation. The animation system shifts a frame by transform and the
+    -- svg art does not ride transforms (the same hole as its missing
+    -- rotation), so an animated knob frame drew its svg standing still.
+    -- The OnUpdate only exists for the fifth of a second a slide runs.
+    local LEFT_X = 3
+    local RIGHT_X = SWITCH_W - KNOB - 3
+    local SLIDE_T = 0.2
+
+    local function place(x)
+        knob:ClearAllPoints()
+        knob:SetPoint("LEFT", track, "LEFT", x, 0)
+    end
+
+    local slideTo, slideFrom, slideStart
+    local function onUpdate()
+        local t = (GetTime() - slideStart) / SLIDE_T
+        if t >= 1 then
+            knob:SetScript("OnUpdate", nil)
+            place(slideTo and RIGHT_X or LEFT_X)
+            return
+        end
+        -- smoothstep, so the knob leaves and lands gently
+        t = t * t * (3 - 2 * t)
+        local to = slideTo and RIGHT_X or LEFT_X
+        place(slideFrom + (to - slideFrom) * t)
+    end
+
+    local function apply(v, slide)
+        paintWords(v, f:IsEnabled())
+        if not slide then
+            knob:SetScript("OnUpdate", nil)
+            place(v and RIGHT_X or LEFT_X)
+            return
+        end
+        -- start from wherever the knob is right now, so reversing a slide
+        -- mid-run turns back instead of jumping to the far side first
+        local kl, tl = knob:GetLeft(), track:GetLeft()
+        slideFrom = (kl and tl) and (kl - tl) or (v and LEFT_X or RIGHT_X)
+        slideTo = v
+        slideStart = GetTime()
+        knob:SetScript("OnUpdate", onUpdate)
+    end
+
+    f:SetScript("OnClick", function()
+        local v = not get()
+        set(v)
+        apply(v, true)
+    end)
+
+    -- the stock SetEnabled only stops the clicks, the greying is ours
+    local setEnabled = f.SetEnabled
+    function f:SetEnabled(on)
+        setEnabled(self, on)
+        if on then
+            knobArt:SetVertexColor(1, 0.82, 0)
+        else
+            knobArt:SetVertexColor(0.5, 0.5, 0.5)
+        end
+        apply(get())
+    end
+
+    addTip(f, tip)
+    refreshers[#refreshers + 1] = function()
+        apply(get())
+    end
+    down(52)
+    return f
 end
 
 -- follower mode owns these widgets: the route arrives as sealed calls with
@@ -129,6 +263,16 @@ local function applyFollowGate()
     end
 end
 refreshers[#refreshers + 1] = applyFollowGate
+
+-- the widgets under the cues checkbox belong to it: voice pick, test
+-- buttons, channel and volume all grey out while the cues are off, and
+-- while following for the same reason the checkbox itself does. The list
+-- fills as the rows build and the gate itself runs after the volume block,
+-- where everything it touches exists.
+local cueGated = {}
+local function cuesLive()
+    return AztarecHelperDB.cues and not (AZT.Follow and AZT.Follow.Suppress())
+end
 
 -- Key capture machinery for the quarter key rows, ahead of the layout so
 -- the rows can use it. The capture lives on its own trap frame that only
@@ -220,9 +364,7 @@ bindWatch:SetScript("OnEvent", function(_, event)
             AZT.QuadClickSync()
         end
         if panel:IsShown() then
-            for _, fn in ipairs(refreshers) do
-                fn()
-            end
+            refreshAll()
         end
     end
 end)
@@ -329,10 +471,12 @@ refreshers[#refreshers + 1] = function()
 end
 followGated[#followGated + 1] = colorBtn
 
-followGated[#followGated + 1] = addCheck(
-    "Compass arrow",
-    "Off is the relative arrow: the move to make as if you were facing the boss, and the voice calls the"
-        .. " same move. On is the compass arrow: it points the way the room view points and carries that"
+followGated[#followGated + 1] = addSwitch(
+    "Arrow mode",
+    "Relative",
+    "Compass",
+    "Relative is the move to make as if you were facing the boss, and the voice calls the"
+        .. " same move. Compass points the way the room view points and carries that"
         .. " quarter's marker inside it. The spoken cues keep talking as if you face the boss either way,"
         .. " so turn them off below if the two readings mix badly for you.",
     function()
@@ -341,7 +485,7 @@ followGated[#followGated + 1] = addCheck(
     function(v)
         AztarecHelperDB.arrowCompass = v
         AZT.ArrowSync()
-        -- the voice has no compass mode, so the first switch comes with a
+        -- the voice has no compass mode, so the first flip comes with a
         -- one-time heads-up about the mixed readings
         if v and AztarecHelperDB.cues and not AztarecHelperDB.compassCueAsked then
             AZT.ShowCompassCueAsk()
@@ -362,28 +506,61 @@ followGated[#followGated + 1] = addCheck(
     end,
     function(v)
         AztarecHelperDB.cues = v
+        refreshAll()
     end
 )
 
--- audition cluster, so the cue sounds can be judged without a pull. Laid
+cueGated[#cueGated + 1] = addSwitch(
+    "Cue voice",
+    "Relative",
+    "Markers",
+    "Relative is the recorded voice calling the move to make, as if you face the boss."
+        .. " Markers is the game's text to speech naming the safe quarter's marker instead,"
+        .. " whatever each quarter wears, with no facing in it at all. The test buttons and"
+        .. " the volume below follow the choice.",
+    function()
+        return AztarecHelperDB.cueMarks
+    end,
+    function(v)
+        AztarecHelperDB.cueMarks = v
+        refreshAll()
+    end
+)
+
+-- Audition cluster, so the cue sounds can be judged without a pull. Laid
 -- out the way the words mean: forward up top, left and right on their
--- sides, stay at the bottom
-local function cueBtn(dir, x, y)
+-- sides, stay at the bottom. That same cross is the compass rose when the
+-- cues name markers, so each button also carries a quarter and the labels
+-- folow the voice the cues are set to.
+local function cueBtn(dir, quad, x, y)
     local btn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     btn:SetSize(70, 22)
     btn:SetPoint("TOPLEFT", x, y)
-    btn:SetText(dir:sub(1, 1):upper() .. dir:sub(2))
     btn:SetScript("OnClick", function()
-        AZT.PlayCue(dir)
+        if AztarecHelperDB.cueMarks then
+            if not AZT.Speak(AZT.QuadWord(quad)) then
+                AZT.chat("no text to speech voice on this machine")
+            end
+        else
+            AZT.PlayCue(dir)
+        end
     end)
+    refreshers[#refreshers + 1] = function()
+        if AztarecHelperDB.cueMarks then
+            btn:SetText(AZT.QuadWord(quad))
+        else
+            btn:SetText(dir:sub(1, 1):upper() .. dir:sub(2))
+        end
+    end
+    cueGated[#cueGated + 1] = btn
     return btn
 end
 
 local midX = cur.x + 84
-local fwdBtn = cueBtn("forward", midX, cur.y)
-cueBtn("left", cur.x + 10, cur.y - 24)
-cueBtn("right", midX + 74, cur.y - 24)
-cueBtn("stay", midX, cur.y - 48)
+local fwdBtn = cueBtn("forward", "N", midX, cur.y)
+cueBtn("left", "W", cur.x + 10, cur.y - 24)
+cueBtn("right", "E", midX + 74, cur.y - 24)
+cueBtn("stay", "S", midX, cur.y - 48)
 local cueLabel = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 cueLabel:SetPoint("CENTER", fwdBtn, "CENTER", 0, -24)
 cueLabel:SetText("Test cues")
@@ -391,20 +568,55 @@ down(76)
 
 local chanY = cur.y
 local refreshVol
+
+-- voice names arrive like "Microsoft David - English (United States)", far
+-- too long for the button. The menu shows them whole.
+local function shortVoice(name)
+    return (name:gsub(" %- .*", ""):gsub("^Microsoft ", ""))
+end
+
+-- one button, two jobs: the sound channel for the recorded voice, the tts
+-- voice for the marker one. Channels cycle like always, voices come as a
+-- menu since a machine can have a dozen, and a pick says a word in the
+-- voice so it can be judged right there.
 local cueChanBtn
 cueChanBtn = addAction("", function()
-    cueChanBtn:SetText("Cues: " .. AZT.CycleCueChannel())
-    refreshVol()
+    if not AztarecHelperDB.cueMarks then
+        cueChanBtn:SetText("Cues: " .. AZT.CycleCueChannel())
+        refreshVol()
+        return
+    end
+    MenuUtil.CreateContextMenu(cueChanBtn, function(_, root)
+        root:CreateTitle("Marker voice")
+        local voices = AZT.TtsVoices()
+        if #voices == 0 then
+            root:CreateButton("no text to speech voices found", function() end)
+            return
+        end
+        for _, v in ipairs(voices) do
+            root:CreateButton(v.name, function()
+                AztarecHelperDB.ttsVoiceID = v.voiceID
+                AZT.Speak(AZT.QuadWord("N"))
+                refreshAll()
+            end)
+        end
+    end)
 end)
 -- narrower than the stock action button so the slider clears the column
 cueChanBtn:SetSize(150, 22)
 addTip(
     cueChanBtn,
-    "The sound channel the cues play through. That channel's volume slider decides how loud they are."
-        .. " Master stays audible even with effects turned down."
+    "For the recorded voice, the sound channel the cues play through, and that channel's"
+        .. " volume slider decides how loud they are. For the marker voice, which of the"
+        .. " machine's text to speech voices does the talking. Picking one says a word in it."
 )
 refreshers[#refreshers + 1] = function()
-    cueChanBtn:SetText("Cues: " .. (AztarecHelperDB.cueChannel or "Master"))
+    if AztarecHelperDB.cueMarks then
+        local v = AZT.TtsVoice()
+        cueChanBtn:SetText("Voice: " .. (v and shortVoice(v.name) or "none"))
+    else
+        cueChanBtn:SetText("Cues: " .. (AztarecHelperDB.cueChannel or "Master"))
+    end
 end
 
 -- volume for the channel the cues play through. This is the game's own
@@ -447,11 +659,17 @@ end
 
 -- pushing a value into the slider fires OnValueChanged, which would write
 -- straight back to the CVar. This says the change came from the game.
+-- On the marker voice the slider is the tts volume instead, the addon's
+-- own number, since tts does not ride the sound channels.
 local reading
 volSlider:SetScript("OnValueChanged", function(_, v)
     v = math.floor(v + 0.5)
     paintVol(v)
     if reading then
+        return
+    end
+    if AztarecHelperDB.cueMarks then
+        AztarecHelperDB.ttsVolume = v
         return
     end
     local cvar = AZT.CueChannelCVar()
@@ -461,19 +679,46 @@ volSlider:SetScript("OnValueChanged", function(_, v)
 end)
 addTip(
     volSlider,
-    "How loud the cues are. This is the game's own volume for that channel,"
-        .. " so moving it here moves it in the sound options too."
+    "How loud the cues are. For the recorded voice this is the game's own volume for the"
+        .. " chosen channel, so moving it here moves the sound options too. For the marker"
+        .. " voice it is the text to speech volume, which is the addon's own number."
 )
 
 refreshVol = function()
-    local cvar = AZT.CueChannelCVar()
-    local v = math.floor((tonumber(cvar and GetCVar(cvar)) or 1) * 100 + 0.5)
+    local v
+    if AztarecHelperDB.cueMarks then
+        v = AztarecHelperDB.ttsVolume or 100
+    else
+        local cvar = AZT.CueChannelCVar()
+        v = math.floor((tonumber(cvar and GetCVar(cvar)) or 1) * 100 + 0.5)
+    end
     reading = true
     volSlider:SetValue(v)
     reading = false
     paintVol(v)
 end
 refreshers[#refreshers + 1] = refreshVol
+
+-- the cue gate itself, down here where everything it greys exists. The
+-- switch and the test buttons take the shared look, the rest have parts
+-- enableLook cannot reach
+local function applyCueGate()
+    local on = cuesLive()
+    for _, w in ipairs(cueGated) do
+        enableLook(w, on)
+    end
+    tintLabel(cueLabel, on)
+    tintLabel(volText, on)
+    if on then
+        fill:SetColorTexture(1, 0.82, 0, 1)
+    else
+        fill:SetColorTexture(0.5, 0.5, 0.5, 0.7)
+    end
+    cueChanBtn:SetEnabled(on)
+    volSlider:SetEnabled(on)
+    volSlider:GetThumbTexture():SetDesaturated(not on)
+end
+refreshers[#refreshers + 1] = applyCueGate
 
 -- the sound options, a macro or anohter addon can move the same number, so
 -- follow it while the panel is open
@@ -538,9 +783,7 @@ addCheck(
     end,
     function(v)
         AZT.SetRelativeTurns(v)
-        for _, fn in ipairs(refreshers) do
-            fn()
-        end
+        refreshAll()
     end
 )
 
@@ -573,9 +816,7 @@ local callCb = addCheck(
     end,
     function(v)
         AZT.SetCallRoute(v)
-        for _, fn in ipairs(refreshers) do
-            fn()
-        end
+        refreshAll()
     end
 )
 
@@ -591,6 +832,8 @@ addCheck(
     end,
     function(v)
         AZT.SetCallStyle(v and "arrows" or "markers")
+        -- the cue test buttons speak this language too
+        refreshAll()
     end
 )
 
@@ -607,9 +850,7 @@ local followCb = addCheck(
     end,
     function(v)
         AZT.SetFollow(v)
-        for _, fn in ipairs(refreshers) do
-            fn()
-        end
+        refreshAll()
     end
 )
 
@@ -738,8 +979,6 @@ end
 -- the role gates keep up
 function AZT.RefreshOptions()
     if panel:IsShown() then
-        for _, fn in ipairs(refreshers) do
-            fn()
-        end
+        refreshAll()
     end
 end

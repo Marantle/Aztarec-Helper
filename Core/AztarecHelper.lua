@@ -5,7 +5,7 @@
 
 local ADDON, AZT = ...
 
-AZT.VERSION = "1.6.0"
+AZT.VERSION = "1.7.0"
 
 -- Venomfall Deeps boss room, measured on PTR 12.1.0.
 -- UnitPosition returns (a, b, z, inst). The addon prints them as world=b,a.
@@ -39,6 +39,8 @@ local DEFAULTS = {
     arrowCompass = false, -- arrow points the way the room view does, no spoken cues
     relativeTurns = false, -- quarter keys answer turns instead, after the first wave
     cues = true, -- the recorded solo cues during your own echoes
+    cueMarks = false, -- cues name the safe quarter's marker over tts instead of the turn
+    ttsVolume = 100, -- how loud everything the addon says over tts is
     callVoice = true, -- follower: read the leader's direction calls out loud
     keysMark = false, -- answer keys also mark the player for the party
     callRoute = false, -- leader: answer keys also call the quarter's number in party chat
@@ -166,6 +168,12 @@ AZT.MARK_SEED = { N = 1, E = 6, S = 4, W = 2 }
 AZT.ARROW_ATLAS = "NPE_Arrow%s"
 AZT.QUAD_DIR = { N = "Up", E = "Right", S = "Down", W = "Left" }
 
+-- the marker index a quarter wears, the party leader's synced icon winning
+-- over the own pick. Nothing back means the quarter shows its bare letter.
+function AZT.QuadIcon(q)
+    return (AZT.Follow and AZT.Follow.IconFor(q)) or (AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q])
+end
+
 -- a quarter as the player sees it: the party leader's icon when one is
 -- synced over, else the marker icon they picked for it or the compass
 -- letter. Everything that names a quarter goes through here so the board,
@@ -176,7 +184,7 @@ function AZT.QuadName(q, size)
     if dir and AZT.Follow and AZT.Follow.Arrows() then
         return ("|A:" .. AZT.ARROW_ATLAS .. ":%d:%d|a"):format(dir, size, size)
     end
-    local idx = (AZT.Follow and AZT.Follow.IconFor(q)) or (AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q])
+    local idx = AZT.QuadIcon(q)
     if idx then
         return ("|T" .. AZT.MARK_TEX .. ":%d|t"):format(idx, size)
     end

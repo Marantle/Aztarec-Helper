@@ -64,11 +64,9 @@ local function arm()
         local keys = { GetBindingKey(cmd) }
         if #keys > 0 then
             local btn = button(q)
-            -- the leader's synced icon wins, then the own pick, and a
-            -- quarter shown as its plain letter still wears its seeded marker
-            local icon = (AZT.Follow and AZT.Follow.IconFor(q))
-                or (AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q])
-                or AZT.MARK_SEED[q]
+            -- a quarter shown as its plain letter still wears its seeded
+            -- marker for the party's sake
+            local icon = AZT.QuadIcon(q) or AZT.MARK_SEED[q]
             local lines = {}
             if callWith then
                 -- marking always speaks in icon numbers, only the call

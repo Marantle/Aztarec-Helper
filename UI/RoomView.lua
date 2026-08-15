@@ -28,6 +28,10 @@ local function pickQuad(qname, idx, arrows)
     end
     AZT.SetCallStyle(arrows and "arrows" or "markers")
     AZT.SetSafeQuads(AZT.Safe and AZT.Safe.GetSequence() or nil)
+    -- the settings panel wears these icons too, on the cue test buttons
+    if AZT.RefreshOptions then
+        AZT.RefreshOptions()
+    end
 end
 
 local function labelMenu(owner, qname)
@@ -497,8 +501,7 @@ function AZT.SetSafeQuads(list, activeIdx)
             fs:SetText(disp)
             -- the letters sit back at 0.65 but art draws fully opaque, an
             -- arrow or a chosen marker is the player's own landmark
-            local hasIcon = (AZT.Follow and (AZT.Follow.Arrows() or AZT.Follow.IconFor(q.name)))
-                or (AztarecHelperDB.quadIcons and AztarecHelperDB.quadIcons[q.name])
+            local hasIcon = (AZT.Follow and AZT.Follow.Arrows()) or AZT.QuadIcon(q.name)
             fs:SetTextColor(1, 1, 1, hasIcon and 1 or 0.65)
         end
     end
