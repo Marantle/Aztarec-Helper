@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.1
+- Three more settings that pick between two ways of doing a thing became sliding switches like the arrow's: the answer keys between Quarters and Turns, the quarter names between Markers and Arrows and the room view between Full and Slim. Nothing about them changed but the control. Both words sit either side of the pill and the one not chosen goes grey
+- The answer keys and room view clicks now do nothing outside the delve. They used to record a route from anywhere in the world and say so in chat, which was a fine way to fill the chat while questing with the keys bound. A practice drill still takes answers wherever you run it
+- A practice or replay that had to open the room view closes it again when it is done or stopped, instead of leaving the room on screen out in the world. Show or hide it by hand in the meantime and it stays the way you put it
+
 ## 1.7.0
 - The cues can name markers now, the most asked-for thing since the voice went in. A new Cue voice switch under the spoken cues picks between Relative, the recorded voice calling forward, left, right or stay, and Markers, the game's text to speech naming the safe quarter's marker instead, star, square, whatever each quarter wears on the room view. No facing assumption in it at all, so it does not care which way you look. Waves nobody answered stay silent like always, and a machine without text to speech falls back to the turn words rather than going quiet mid-fight
 - The test buttons follow the choice. The same cross that auditions forward, left, right and stay doubles as a compass rose on the marker voice, each button wearing its quarter's marker name, and changing a quarter's icon on the room view relabels them on the spot

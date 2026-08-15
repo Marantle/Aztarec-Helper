@@ -211,6 +211,12 @@ local function addSwitch(name, leftText, rightText, tip, get, set)
     local function apply(v, slide)
         paintWords(v, f:IsEnabled())
         if not slide then
+            -- setters that refresh the whole panel land here mid slide, and
+            -- a slide already heading the right way is left to finish
+            -- rather than snapped home
+            if knob:GetScript("OnUpdate") and slideTo == v then
+                return
+            end
             knob:SetScript("OnUpdate", nil)
             place(v and RIGHT_X or LEFT_X)
             return
@@ -226,8 +232,9 @@ local function addSwitch(name, leftText, rightText, tip, get, set)
 
     f:SetScript("OnClick", function()
         local v = not get()
-        set(v)
+        -- slide first since the setter may refresh the panel on its way
         apply(v, true)
+        set(v)
     end)
 
     -- the stock SetEnabled only stops the clicks, the greying is ours
@@ -412,9 +419,11 @@ end, function(v)
     AZT.SetRoomShown(v)
 end)
 
-addCheck(
-    "Slim room view",
-    "Cuts the room view down to the room itself, with the excess padding removed."
+addSwitch(
+    "Room view size",
+    "Full",
+    "Slim",
+    "Set to Slim, the room view is cut down to the room itself, with the excess padding removed."
         .. " `/azt help` still opens the instructions.",
     function()
         return AztarecHelperDB.roomSlim
@@ -772,9 +781,11 @@ addBindRow("Answer east", "AZTARECHELPER_MARK_EAST")
 addBindRow("Answer south", "AZTARECHELPER_MARK_SOUTH")
 addBindRow("Answer west", "AZTARECHELPER_MARK_WEST")
 
-addCheck(
-    "Answer in relative turns",
-    "Answer with the move you made rather than the quarter you ran to, read like the arrow:"
+addSwitch(
+    "Answer keys",
+    "Quarters",
+    "Turns",
+    "Set to Turns, your keys say the move you made rather than the quarter you ran to, read like the arrow:"
         .. " as if you face the boss in the middle. North is FORWARD, east is RIGHT and west"
         .. " is LEFT. The first wave still needs its compass direction, which is where the"
         .. " route starts. Marking and calling switch off, since a turn names no quarter.",
@@ -820,9 +831,11 @@ local callCb = addCheck(
     end
 )
 
-addCheck(
-    "Direction arrows, not markers",
-    "Swaps the quarter markers for the four direction arrows, everywhere the addon names a"
+addSwitch(
+    "Quarter names",
+    "Markers",
+    "Arrows",
+    "Set to Arrows, the quarter markers become the four direction arrows everywhere the addon names a"
         .. " quarter, with the room read north up like the room view draws it. Your calls say"
         .. " Up, Right, Down or Left to match, so followers see arrows and their voice reads"
         .. " them out, and the words mean something to party members without the addon too."

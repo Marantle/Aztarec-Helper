@@ -529,10 +529,13 @@ function AZT.ToggleMapArt()
     AZT.chat("map art backdrop: " .. (on and "ON" or "OFF"))
 end
 
+local borrowed = false -- shown by replay or practice rather than by hand
+
 -- the preference is remembered, so a hidden room view stays hidden across
 -- zone changes until it is asked for again
 function AZT.SetRoomShown(v)
     AztarecHelperDB.roomView = v and true or false
+    borrowed = false
     if not v then
         if view and view:IsShown() then
             view:Hide()
@@ -551,13 +554,24 @@ function AZT.ToggleRoomView()
     AZT.SetRoomShown(not (view and view:IsShown()))
 end
 
--- for callers that need the view on screen without toggling it (replay)
+-- Replay and practice borrow the view when it is not up, and hand it back
+-- when they finish, so a drill run in town does not leave the room on
+-- screen for good. A show or hide by hand in between makes it the player's
+-- again and the release keeps its hands off.
 function AZT.EnsureRoomView()
     if not view then
         build()
     end
     if not view:IsShown() then
         view:Show()
+        borrowed = true
+    end
+end
+
+function AZT.ReleaseRoomView()
+    if borrowed then
+        borrowed = false
+        view:Hide()
     end
 end
 

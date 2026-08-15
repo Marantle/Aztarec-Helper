@@ -330,9 +330,16 @@ local function place(step, i, caught)
     fillSpot(i, step, caught)
 end
 
+-- The keys are bound account wide and would happily walk a route in from
+-- the middle of Dornogal, chatting about safe spots all the way. Answers
+-- only count in the delve, or while a practice sermon runs anywhere.
+local function answering()
+    return practiceTicker or AZT.InDelve()
+end
+
 -- the player names the quarter outright, no position read anywhere
 function Safe.CaptureQuadrant(q)
-    if not QUAD_INDEX[q] then
+    if not QUAD_INDEX[q] or not answering() then
         return
     end
     place(q, answerIndex())
@@ -350,7 +357,7 @@ local lastKey, lastKeyAt
 -- through here. Room view clicks do not: a click lands on a quarter of the
 -- room, so it names that quarter whatever the keys are set to mean.
 function Safe.AnswerKey(q)
-    if not QUAD_INDEX[q] then
+    if not QUAD_INDEX[q] or not answering() then
         return
     end
     local nowT = GetTime()
@@ -401,6 +408,10 @@ function Safe.Reset()
     if practiceTicker then
         practiceTicker:Cancel()
         practiceTicker = nil
+    end
+    -- a room view the drill or replay opened goes back with it
+    if AZT.ReleaseRoomView then
+        AZT.ReleaseRoomView()
     end
     clearRoute()
     chanUnit = nil
@@ -468,6 +479,9 @@ function Safe.StopReplay()
     setWave(nil, 0, nil, nil)
     if AZT.SetSafeQuads then
         AZT.SetSafeQuads(seq)
+    end
+    if AZT.ReleaseRoomView then
+        AZT.ReleaseRoomView()
     end
 end
 
