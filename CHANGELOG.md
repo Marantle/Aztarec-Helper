@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.2
+- A tidier settings panel. The switches sit on one line each now, label on the left and pill on the right at the same height as a checkbox row, so they stop looking like section headings, and every row in a column starts its text on the same line and ends its control on the same line, the key buttons included. Quarter names moved up above the marking and role rows, which keeps leader and follower together, the route buttons pair up two to a row so the page fits without scrolling and the marker voice button trims a long voice name to fit. Section titles stopped looking like just another row too, each is a small white label over a thin rule with some air above it, so where one group ends and the next begins is plain at a glance
+- A greyed out setting now says why. Hover it and the tooltip ends with the lock reason, following the leader for the arrow and recorded cues, Spoken cues being off for the voice rows, Turns keys for marking and calling, not leading for the call box and so on. Speak the leader's calls also greys out again when Follow the leader goes off, it used to stay live with nothing to read
+
 ## 1.7.1
 - Three more settings that pick between two ways of doing a thing became sliding switches like the arrow's: the answer keys between Quarters and Turns, the quarter names between Markers and Arrows and the room view between Full and Slim. Nothing about them changed but the control. Both words sit either side of the pill and the one not chosen goes grey
 - The answer keys and room view clicks now do nothing outside the delve. They used to record a route from anywhere in the world and say so in chat, which was a fine way to fill the chat while questing with the keys bound. A practice drill still takes answers wherever you run it

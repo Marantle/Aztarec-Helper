@@ -44,6 +44,12 @@ title:SetText("Azta'rec Helper")
 local cur = { x = 16, y = -50 }
 local deepest = 0
 
+-- Every row is text at TEXT_X and its control ending at ROW_W, so a column
+-- has one straight edge on each side. Checkbox rows get there on their
+-- own since the box is what sits left of the text
+local TEXT_X = 30
+local ROW_W = 290
+
 local function down(dy)
     cur.y = cur.y - dy
     if -cur.y > deepest then
@@ -55,18 +61,40 @@ local function column(x)
     cur.x, cur.y = x, -50
 end
 
+-- Section titles are a small white capitalised label over a hairline while
+-- the rows under them are gold, so the two never read as the same list.
+-- Air above the rule does the separating and the first section of a column
+-- skips it since the page title alredy sits there
 local function section(name)
-    down(6)
-    local fs = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    if cur.y ~= -50 then
+        down(16)
+    end
+    local fs = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     fs:SetPoint("TOPLEFT", cur.x, cur.y)
-    fs:SetText(name)
-    down(22)
+    fs:SetText(name:upper())
+    fs:SetAlpha(0.8)
+    local rule = page:CreateTexture(nil, "ARTWORK")
+    rule:SetColorTexture(1, 1, 1, 0.18)
+    rule:SetPoint("TOPLEFT", cur.x, cur.y - 15)
+    rule:SetSize(ROW_W, 1)
+    down(24)
 end
 
+-- a greyed out widget keeps its tooltip and gets the reason it is locked
+-- under it, set by whichever gate greyed it. Disabled buttons drop their
+-- mouse scripts unless told otherwise, the volume slider has no such
+-- method and no reason to show either
 local function addTip(widget, tip)
+    if widget.SetMotionScriptsWhileDisabled then
+        widget:SetMotionScriptsWhileDisabled(true)
+    end
     widget:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(tip, 1, 1, 1, 1, true)
+        if self.lockedWhy then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(self.lockedWhy, 0.6, 0.6, 0.6, true)
+        end
         GameTooltip:Show()
     end)
     widget:SetScript("OnLeave", function()
@@ -80,7 +108,7 @@ local function addCheck(label, tip, get, set)
     cb:SetSize(26, 26)
     cb:SetPoint("TOPLEFT", cur.x, cur.y)
     local fs = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    fs:SetPoint("LEFT", cb, "RIGHT", 4, 0)
+    fs:SetPoint("LEFT", cb, "LEFT", TEXT_X, 0)
     fs:SetText(label)
     cb:SetScript("OnClick", function(btn)
         set(btn:GetChecked() and true or false)
@@ -94,17 +122,31 @@ local function addCheck(label, tip, get, set)
     return cb
 end
 
-local function addAction(label, handler, tip)
+local function button(label, handler, tip, x, w)
     local btn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    btn:SetSize(170, 22)
-    btn:SetPoint("TOPLEFT", cur.x, cur.y)
+    btn:SetSize(w, 22)
+    btn:SetPoint("TOPLEFT", x, cur.y)
     btn:SetText(label)
     btn:SetScript("OnClick", handler)
     if tip then
         addTip(btn, tip)
     end
+    return btn
+end
+
+local function addAction(label, handler, tip)
+    local btn = button(label, handler, tip, cur.x, 170)
     down(28)
     return btn
+end
+
+-- two narrower buttons sharing a row, for sections that would otherwise
+-- run a column long with short verbs
+local function addActionPair(a, b)
+    local w = (ROW_W - 4) / 2
+    button(a.label, a.fn, a.tip, cur.x, w)
+    button(b.label, b.fn, b.tip, cur.x + w + 4, w)
+    down(28)
 end
 
 -- the panel's one text palette: gold when a thing is live, grey when not
@@ -116,20 +158,23 @@ local function tintLabel(fs, on)
     end
 end
 
-local function enableLook(w, on)
+local function enableLook(w, on, why)
     w:SetEnabled(on)
+    w.lockedWhy = not on and why or nil
     if w.label then
         tintLabel(w.label, on)
     end
 end
 
--- A two state switch: a titled row with a word on each side of a small pill
--- and a knob that slides to the chosen one, the word not chosen in grey.
+-- A two state switch: a labelled row like a checkbox's, with a word on each
+-- side of a small pill and a knob that slides to the chosen one, the word
+-- not chosen in grey.
 -- The pill and knob are svg files, which a 12.1 client draws straight from
 -- disk, so the shapes are actually round. A 12.0 client has no
 -- CreateVectorGraphics and gets flat squares with the same behavior.
 local SWITCH_MEDIA = "Interface\\AddOns\\AztarecHelper\\Media\\"
 local SWITCH_W, SWITCH_H, KNOB = 46, 22, 16
+local WORD_W = 48 -- the widest side word, Relative or Compass in the small font
 
 local function switchArt(parent, file, layer)
     if parent.CreateVectorGraphics then
@@ -145,18 +190,19 @@ end
 
 local function addSwitch(name, leftText, rightText, tip, get, set)
     local f = CreateFrame("Button", nil, page)
-    f:SetSize(300, 48)
+    f:SetSize(ROW_W, 26)
     f:SetPoint("TOPLEFT", cur.x, cur.y)
     local head = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    head:SetPoint("TOPLEFT", 0, 0)
+    head:SetPoint("LEFT", TEXT_X, 0)
     head:SetText(name)
     f.label = head
 
     local track = switchArt(f, "switch-track.svg", "ARTWORK")
     track:SetSize(SWITCH_W, SWITCH_H)
-    -- fixed spot rather than flowing after the left word, so stacked
-    -- switches line their pills up
-    track:SetPoint("TOPLEFT", 110, -22)
+    -- fixed spot rather than flowing after the label, so stacked switches
+    -- line their pills up. Room on the right for the longest word, so
+    -- every right word ends inside the row
+    track:SetPoint("RIGHT", -(WORD_W + 8), 0)
     track:SetVertexColor(0, 0, 0, 0.5)
 
     local leftFS = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -253,7 +299,7 @@ local function addSwitch(name, leftText, rightText, tip, get, set)
     refreshers[#refreshers + 1] = function()
         apply(get())
     end
-    down(52)
+    down(30)
     return f
 end
 
@@ -263,10 +309,12 @@ end
 -- following is in effect and the stored settings come back untouched when
 -- it stops. The voice for the calls themselves lives under Party instead
 local followGated = {}
+local FOLLOW_WHY = "Locked while you follow the leader. Their calls arrive with no turn in them,"
+    .. " so this has nothing true to work from. It comes back the moment following stops."
 local function applyFollowGate()
     local locked = AZT.Follow and AZT.Follow.Suppress()
     for _, w in ipairs(followGated) do
-        enableLook(w, not locked)
+        enableLook(w, not locked, FOLLOW_WHY)
     end
 end
 refreshers[#refreshers + 1] = applyFollowGate
@@ -377,12 +425,16 @@ bindWatch:SetScript("OnEvent", function(_, event)
 end)
 
 local function addBindRow(label, cmd)
-    local fs = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    fs:SetPoint("TOPLEFT", cur.x, cur.y - 5)
+    local fs = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    fs:SetPoint("TOPLEFT", cur.x + TEXT_X, cur.y - 5)
     fs:SetText(label)
-    local btn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    btn:SetSize(120, 22)
-    btn:SetPoint("TOPLEFT", cur.x + 130, cur.y)
+    local btn = button(
+        "",
+        nil,
+        "Click, then press the key you want. Escape backs out and right click unbinds.",
+        cur.x + ROW_W - 120,
+        120
+    )
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     btn:SetScript("OnClick", function(self, mouse)
         stopListening()
@@ -397,7 +449,6 @@ local function addBindRow(label, cmd)
         end
         startListening(self, cmd)
     end)
-    addTip(btn, "Click, then press the key you want. Escape backs out and right click unbinds.")
     btn:SetScript("OnHide", function(self)
         if listening and listening.btn == self then
             stopListening()
@@ -578,10 +629,15 @@ down(76)
 local chanY = cur.y
 local refreshVol
 
--- voice names arrive like "Microsoft David - English (United States)", far
--- too long for the button. The menu shows them whole.
+-- voice names arrive like "Microsoft David - English (United States)" or
+-- "Harri Online (Natural)", far too long for the button. The menu shows
+-- them whole.
 local function shortVoice(name)
-    return (name:gsub(" %- .*", ""):gsub("^Microsoft ", ""))
+    name = name:gsub(" %- .*", ""):gsub("%s*%(.-%)", ""):gsub("^Microsoft ", "")
+    if #name > 14 then
+        name = name:sub(1, 13) .. "..."
+    end
+    return name
 end
 
 -- one button, two jobs: the sound channel for the recorded voice, the tts
@@ -713,8 +769,9 @@ refreshers[#refreshers + 1] = refreshVol
 -- enableLook cannot reach
 local function applyCueGate()
     local on = cuesLive()
+    local why = AztarecHelperDB.cues and FOLLOW_WHY or "Locked while Spoken cues is off. Tick it to use this."
     for _, w in ipairs(cueGated) do
-        enableLook(w, on)
+        enableLook(w, on, why)
     end
     tintLabel(cueLabel, on)
     tintLabel(volText, on)
@@ -743,28 +800,33 @@ end)
 -- deep enough as it is
 section("Route")
 
-addAction(
-    "Practice the memory game",
-    function()
+addActionPair({
+    label = "Practice sermon",
+    fn = function()
         AZT.Safe.Practice()
     end,
-    "A pretend sermon on the room view: seven waves, safe quarter green and the rest red."
+    tip = "A pretend sermon on the room view: seven waves, safe quarter green and the rest red."
         .. " Answer each one with your keys or clicks like a real pull, and the echoes that"
-        .. " follow play back what you recorded. Click again to stop early."
-)
+        .. " follow play back what you recorded. Click again to stop early.",
+}, {
+    label = "Replay last pull",
+    fn = function()
+        AZT.Safe.Replay()
+    end,
+})
 
-addAction("Replay last pull", function()
-    AZT.Safe.Replay()
-end)
-
-addAction("Review last pull", function()
-    AZT.Safe.Review()
-end)
-
-addAction("Reset route", function()
-    AZT.Safe.Reset()
-    AZT.chat("recorded route cleared")
-end)
+addActionPair({
+    label = "Review last pull",
+    fn = function()
+        AZT.Safe.Review()
+    end,
+}, {
+    label = "Reset route",
+    fn = function()
+        AZT.Safe.Reset()
+        AZT.chat("recorded route cleared")
+    end,
+})
 
 -- Right column: the keys, what the party sees and the window locks
 
@@ -800,6 +862,27 @@ addSwitch(
 
 section("Party")
 
+-- ahead of the role rows, since it decides what the marks and calls say
+-- and the leader and follower rows are a pair best left together
+addSwitch(
+    "Quarter names",
+    "Markers",
+    "Arrows",
+    "Set to Arrows, the quarter markers become the four direction arrows everywhere the addon names a"
+        .. " quarter, with the room read north up like the room view draws it. Your calls say"
+        .. " Up, Right, Down or Left to match, so followers see arrows and their voice reads"
+        .. " them out, and the words mean something to party members without the addon too."
+        .. " The same choice sits in the quarter menus on the room view.",
+    function()
+        return AztarecHelperDB.callStyle == "arrows"
+    end,
+    function(v)
+        AZT.SetCallStyle(v and "arrows" or "markers")
+        -- the cue test buttons speak this language too
+        refreshAll()
+    end
+)
+
 local markCb = addCheck(
     "Answer keys mark me",
     "Each press of a quarter key also puts that quarter's marker on you, through the game's own"
@@ -827,25 +910,6 @@ local callCb = addCheck(
     end,
     function(v)
         AZT.SetCallRoute(v)
-        refreshAll()
-    end
-)
-
-addSwitch(
-    "Quarter names",
-    "Markers",
-    "Arrows",
-    "Set to Arrows, the quarter markers become the four direction arrows everywhere the addon names a"
-        .. " quarter, with the room read north up like the room view draws it. Your calls say"
-        .. " Up, Right, Down or Left to match, so followers see arrows and their voice reads"
-        .. " them out, and the words mean something to party members without the addon too."
-        .. " The same choice sits in the quarter menus on the room view.",
-    function()
-        return AztarecHelperDB.callStyle == "arrows"
-    end,
-    function(v)
-        AZT.SetCallStyle(v and "arrows" or "markers")
-        -- the cue test buttons speak this language too
         refreshAll()
     end
 )
@@ -883,15 +947,21 @@ local voiceCb = addCheck(
 -- the roles come from leadership, so the boxes track it: only a party
 -- leader can turn calling on and a party leader cannot follow. A toggle
 -- that is already on stays clickable, going off is always allowed
+local TURNS_WHY = "Locked while Answer keys is set to Turns. A turn names no quarter, so there is"
+    .. " nothing to mark or call. Set the switch back to Quarters to use this."
+local NOT_LEADER_WHY = "Locked because you are not leading a party. Only the party leader calls the route."
+local LEADER_WHY = "Locked because you lead the party. The leader calls the route and the others follow it."
+local NOT_FOLLOWING_WHY = "Locked until Follow the leader is on. It only reads the leader's calls."
 local function applyRoleGate()
     local leading = AZT.InPlayerParty() and UnitIsGroupLeader("player")
     local turns = AztarecHelperDB.relativeTurns
-    enableLook(callCb, (leading or AztarecHelperDB.callRoute) and not turns)
-    enableLook(markCb, not turns)
-    enableLook(followCb, not leading or AztarecHelperDB.follow)
+    enableLook(callCb, (leading or AztarecHelperDB.callRoute) and not turns, turns and TURNS_WHY or NOT_LEADER_WHY)
+    enableLook(markCb, not turns, TURNS_WHY)
+    enableLook(followCb, not leading or AztarecHelperDB.follow, LEADER_WHY)
     -- the voice only ever speaks the leader's calls, so it rides the follow
-    -- toggle rather than the live role
-    enableLook(voiceCb, AztarecHelperDB.follow or AztarecHelperDB.callVoice)
+    -- toggle rather than the live role. Follow off locks it even when it is
+    -- ticked, the tick keeps for the next time following goes on
+    enableLook(voiceCb, AztarecHelperDB.follow, NOT_FOLLOWING_WHY)
 end
 refreshers[#refreshers + 1] = applyRoleGate
 
