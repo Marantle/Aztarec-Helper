@@ -140,6 +140,18 @@ local function addAction(label, handler, tip)
     return btn
 end
 
+-- a label at the text rail with a button of the given width flush with the
+-- right rail. The button starts blank, the caller writes its text
+local function addLabelledButton(label, tip, w, handler)
+    local fs = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    fs:SetPoint("TOPLEFT", cur.x + TEXT_X, cur.y - 5)
+    fs:SetText(label)
+    local btn = button("", handler, tip, cur.x + ROW_W - w, w)
+    btn.label = fs
+    down(28)
+    return btn
+end
+
 -- two narrower buttons sharing a row, for sections that would otherwise
 -- run a column long with short verbs
 local function addActionPair(a, b)
@@ -149,13 +161,10 @@ local function addActionPair(a, b)
     down(28)
 end
 
--- the panel's one text palette: gold when a thing is live, grey when not
+-- the panel's one palette: gold when a thing is live, grey when not
+local GOLD, GREY = { 1, 0.82, 0 }, { 0.5, 0.5, 0.5 }
 local function tintLabel(fs, on)
-    if on then
-        fs:SetTextColor(1, 0.82, 0)
-    else
-        fs:SetTextColor(0.5, 0.5, 0.5)
-    end
+    fs:SetTextColor(unpack(on and GOLD or GREY))
 end
 
 local function enableLook(w, on, why)
@@ -219,7 +228,7 @@ local function addSwitch(name, leftText, rightText, tip, get, set)
     local knobArt = switchArt(knob, "switch-knob.svg", "OVERLAY")
     knobArt:SetSize(KNOB, KNOB)
     knobArt:SetPoint("CENTER", knob)
-    knobArt:SetVertexColor(1, 0.82, 0)
+    knobArt:SetVertexColor(unpack(GOLD))
 
     local function paintWords(v, on)
         tintLabel(leftFS, on and not v)
@@ -287,11 +296,7 @@ local function addSwitch(name, leftText, rightText, tip, get, set)
     local setEnabled = f.SetEnabled
     function f:SetEnabled(on)
         setEnabled(self, on)
-        if on then
-            knobArt:SetVertexColor(1, 0.82, 0)
-        else
-            knobArt:SetVertexColor(0.5, 0.5, 0.5)
-        end
+        knobArt:SetVertexColor(unpack(on and GOLD or GREY))
         apply(get())
     end
 
@@ -425,30 +430,25 @@ bindWatch:SetScript("OnEvent", function(_, event)
 end)
 
 local function addBindRow(label, cmd)
-    local fs = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    fs:SetPoint("TOPLEFT", cur.x + TEXT_X, cur.y - 5)
-    fs:SetText(label)
-    local btn = button(
-        "",
-        nil,
+    local btn = addLabelledButton(
+        label,
         "Click, then press the key you want. Escape backs out and right click unbinds.",
-        cur.x + ROW_W - 120,
-        120
+        120,
+        function(self, mouse)
+            stopListening()
+            if mouse == "RightButton" then
+                local key = GetBindingKey(cmd)
+                if key then
+                    SetBinding(key)
+                    SaveBindings(GetCurrentBindingSet())
+                end
+                self:SetText(keyText(cmd))
+                return
+            end
+            startListening(self, cmd)
+        end
     )
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    btn:SetScript("OnClick", function(self, mouse)
-        stopListening()
-        if mouse == "RightButton" then
-            local key = GetBindingKey(cmd)
-            if key then
-                SetBinding(key)
-                SaveBindings(GetCurrentBindingSet())
-            end
-            self:SetText(keyText(cmd))
-            return
-        end
-        startListening(self, cmd)
-    end)
     btn:SetScript("OnHide", function(self)
         if listening and listening.btn == self then
             stopListening()
@@ -457,7 +457,6 @@ local function addBindRow(label, cmd)
     refreshers[#refreshers + 1] = function()
         btn:SetText(keyText(cmd))
     end
-    down(26)
 end
 
 -- Left column: everything the addon draws
@@ -513,22 +512,42 @@ followGated[#followGated + 1] = addCheck(
     end
 )
 
+-- the arrow colour button shows the colour as a dot beside its name and
+-- opens the menu. Gold has no tint of its own since the art is painted gold
 local colorBtn
-colorBtn = addAction("", function()
-    MenuUtil.CreateContextMenu(colorBtn, function(_, root)
-        root:CreateTitle("Arrow color")
-        for _, key in ipairs(AZT.ARROW_ORDER) do
-            root:CreateButton(AZT.ARROW_COLORS[key].label, function()
-                AztarecHelperDB.arrowColor = key
-                colorBtn:SetText("Arrow: " .. AZT.ARROW_COLORS[key].label)
-                AZT.ArrowSync()
-            end)
-        end
-    end)
-end, "The color the arrow draws in during the echoes. Gold leaves the artwork as it was painted.")
-refreshers[#refreshers + 1] = function()
-    colorBtn:SetText("Arrow: " .. AZT.ArrowColor().label)
+colorBtn = addLabelledButton(
+    "Arrow color",
+    "The color the arrow draws in during the echoes. Gold leaves the artwork as it was painted.",
+    100,
+    function()
+        MenuUtil.CreateContextMenu(colorBtn, function(_, root)
+            root:CreateTitle("Arrow color")
+            for _, key in ipairs(AZT.ARROW_ORDER) do
+                root:CreateButton(AZT.ARROW_COLORS[key].label, function()
+                    AztarecHelperDB.arrowColor = key
+                    refreshAll()
+                    AZT.ArrowSync()
+                end)
+            end
+        end)
+    end
+)
+local swatch = switchArt(colorBtn, "switch-knob.svg", "OVERLAY")
+swatch:SetSize(12, 12)
+swatch:SetPoint("LEFT", 10, 0)
+colorBtn:GetFontString():ClearAllPoints()
+colorBtn:GetFontString():SetPoint("LEFT", swatch, "RIGHT", 6, 0)
+local function paintSwatch()
+    local c = AZT.ArrowColor()
+    swatch:SetVertexColor(unpack(colorBtn:IsEnabled() and (c.rgb or GOLD) or GREY))
+    colorBtn:SetText(c.label)
 end
+local setColorEnabled = colorBtn.SetEnabled
+function colorBtn:SetEnabled(on)
+    setColorEnabled(self, on)
+    paintSwatch()
+end
+refreshers[#refreshers + 1] = paintSwatch
 followGated[#followGated + 1] = colorBtn
 
 followGated[#followGated + 1] = addSwitch(

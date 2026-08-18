@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.3
+- The arrow colour is a row like the rest of the settings now, Arrow color on the left and a small button on the right that shows the chosen colour as a dot beside its name, so you see the colour instead of reading it. Picking from the menu retints the dot on the spot
+
 ## 1.7.2
 - A tidier settings panel. The switches sit on one line each now, label on the left and pill on the right at the same height as a checkbox row, so they stop looking like section headings, and every row in a column starts its text on the same line and ends its control on the same line, the key buttons included. Quarter names moved up above the marking and role rows, which keeps leader and follower together, the route buttons pair up two to a row so the page fits without scrolling and the marker voice button trims a long voice name to fit. Section titles stopped looking like just another row too, each is a small white label over a thin rule with some air above it, so where one group ends and the next begins is plain at a glance
 - A greyed out setting now says why. Hover it and the tooltip ends with the lock reason, following the leader for the arrow and recorded cues, Spoken cues being off for the voice rows, Turns keys for marking and calling, not leading for the call box and so on. Speak the leader's calls also greys out again when Follow the leader goes off, it used to stay live with nothing to read
