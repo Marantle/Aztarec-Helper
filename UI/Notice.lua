@@ -57,11 +57,11 @@ local INSTR = "Azta'rec slams three quarters of the room at once during Sermon o
     .. "your back on him and they will be backwards, so keep him in front of you.\n\n"
     .. "Your four keys live in the settings panel and in the game's Key Bindings screen "
     .. "under AddOns. Each quarter on the room view shows its own key. The quarters wear "
-    .. "markers rather than compass letters. drop the matching world markers in the room. Click a marker out of combat "
-    .. "to change it. Between pulls, /azt replay walks "
-    .. "the last route again at "
-    .. "its real speed, /azt review says what it recorded, and /azt practice runs a whole "
-    .. "pretend sermon for you to answer and get echoed, no boss needed."
+    .. "markers rather than compass letters, so you can drop the matching world markers in "
+    .. "the room, and clicking a marker out of combat changes it. Between pulls, /azt replay "
+    .. "walks the last route again at its real speed, /azt review says what it recorded, and "
+    .. "/azt practice runs a whole pretend sermon for you to answer and get echoed, no boss "
+    .. "needed."
 
 local function build()
     box = CreateFrame("Frame", "AztarecHelperNotice", UIParent, "BackdropTemplate")

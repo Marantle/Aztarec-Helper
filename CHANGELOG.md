@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.4
+- The last paragraph of the in-game instructions had lost a few words in an edit and read like a note to self. It says what it meant to again
+
 ## 1.7.3
 - The arrow colour is a row like the rest of the settings now, Arrow color on the left and a small button on the right that shows the chosen colour as a dot beside its name, so you see the colour instead of reading it. Picking from the menu retints the dot on the spot
 
