@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.5
+- The marker voice can call colours instead of shapes, as asked. Tick Say marker colors under the spoken cues and it says yellow, orange, purple, green, silver, blue or red for the safe quarter rather than star, circle and so on. Skull has no colour and stays skull. The test buttons say whatever the voice would
+
 ## 1.7.4
 - The last paragraph of the in-game instructions had lost a few words in an edit and read like a note to self. It says what it meant to again
 

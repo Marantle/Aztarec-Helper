@@ -5,7 +5,7 @@
 
 local ADDON, AZT = ...
 
-AZT.VERSION = "1.7.4"
+AZT.VERSION = "1.7.5"
 
 -- Venomfall Deeps boss room, measured on PTR 12.1.0.
 -- UnitPosition returns (a, b, z, inst). The addon prints them as world=b,a.
@@ -40,6 +40,7 @@ local DEFAULTS = {
     relativeTurns = false, -- quarter keys answer turns instead, after the first wave
     cues = true, -- the recorded solo cues during your own echoes
     cueMarks = false, -- cues name the safe quarter's marker over tts instead of the turn
+    cueColors = false, -- the marker voice says the marker's colour rather than its shape
     ttsVolume = 100, -- how loud everything the addon says over tts is
     callVoice = true, -- follower: read the leader's direction calls out loud
     keysMark = false, -- answer keys also mark the player for the party

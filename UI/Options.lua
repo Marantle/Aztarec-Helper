@@ -606,6 +606,23 @@ cueGated[#cueGated + 1] = addSwitch(
     end
 )
 
+-- only means something on the marker voice, so it takes a second gate under
+-- the cue one
+local colorCheck = addCheck(
+    "Say marker colors",
+    "The marker voice names the colour instead of the shape, yellow for star, orange for"
+        .. " circle, purple, green, silver, blue and red for the rest. Skull has no colour and"
+        .. " stays skull. The test buttons follow.",
+    function()
+        return AztarecHelperDB.cueColors
+    end,
+    function(v)
+        AztarecHelperDB.cueColors = v
+        refreshAll()
+    end
+)
+cueGated[#cueGated + 1] = colorCheck
+
 -- Audition cluster, so the cue sounds can be judged without a pull. Laid
 -- out the way the words mean: forward up top, left and right on their
 -- sides, stay at the bottom. That same cross is the compass rose when the
@@ -791,6 +808,9 @@ local function applyCueGate()
     local why = AztarecHelperDB.cues and FOLLOW_WHY or "Locked while Spoken cues is off. Tick it to use this."
     for _, w in ipairs(cueGated) do
         enableLook(w, on, why)
+    end
+    if on and not AztarecHelperDB.cueMarks then
+        enableLook(colorCheck, false, "Locked while the cue voice is Relative. It only names markers.")
     end
     tintLabel(cueLabel, on)
     tintLabel(volText, on)

@@ -67,6 +67,9 @@ end
 
 -- names for the marker each quarter can wear, raid target indexing
 local MARK_NAMES = { "Star", "Circle", "Diamond", "Triangle", "Moon", "Square", "Cross", "Skull" }
+-- the same eight by colour, for groups that call them that way. Skull has
+-- no colour of its own so it stays skull
+local MARK_COLORS = { "Yellow", "Orange", "Purple", "Green", "Silver", "Blue", "Red", "Skull" }
 
 function AZT.TtsVoices()
     return C_VoiceChat.GetTtsVoices() or {}
@@ -112,13 +115,14 @@ function AZT.Speak(text)
 end
 
 -- What a quarter is called out loud when the cues name quarters: the marker
--- it wears, read the same way the boards read it, or its direction word
--- when the room reads in arrows.
+-- it wears, read the same way the boards read it, by shape or by colour as
+-- the player likes, or its direction word when the room reads in arrows.
 function AZT.QuadWord(q)
     if AZT.Follow and AZT.Follow.Arrows() then
         return AZT.QUAD_DIR[q]
     end
-    return MARK_NAMES[AZT.QuadIcon(q) or AZT.MARK_SEED[q]]
+    local names = AztarecHelperDB.cueColors and MARK_COLORS or MARK_NAMES
+    return names[AZT.QuadIcon(q) or AZT.MARK_SEED[q]]
 end
 
 local CUE_LEAD = 0.5 -- how long before the wave lands the word plays
